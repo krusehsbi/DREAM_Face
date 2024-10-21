@@ -1,0 +1,6 @@
+matplotlib==3.9.2
+numpy==1.25.1
+scikit_learn==1.5.2
+tensorflow_rocm==2.16.1
+opencv-python
+scikit-learn
