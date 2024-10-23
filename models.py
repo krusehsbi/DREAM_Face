@@ -1,74 +1,73 @@
-from tensorflow.keras.applications import ResNet50
-from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
-from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import Adam
+from typing import override
 
-class MultitaskResNet:
+from keras import applications, layers, models, optimizers
+import keras
+
+
+class MultitaskResNet(keras.Model):
     def __init__(self, input_shape=(128, 128, 3)):
+        super().__init__()
+
         self.input_shape = input_shape
-        self.model = None
-
-    def build_model(self):
         # Load the ResNet50 model without the top layer (pretrained on ImageNet)
-        base_model = ResNet50(include_top=False, input_shape=self.input_shape, weights='imagenet')
-        base_model.trainable = False  # Freeze the base model
+        self.base_model = applications.ResNet50(
+            include_top=False,
+            input_shape=input_shape,
+            weights='imagenet')
+        self.base_model.trainable = False  # Freeze the base model
 
-        # Shared layers (common backbone)
-        x = base_model.output
-        x = GlobalAveragePooling2D()(x)
-
-        # Task 1: Face/No-Face Classification (Binary Classification)
-        face_output = Dense(1, activation='sigmoid', name='face_output')(x)
+        self.face_output = layers.Dense(1, activation='sigmoid', name='face_output')
 
         # Task 2: Age Prediction (Regression) with additional dense layers
-        age_output = Dense(64, activation='relu')(x)
-        age_output = Dense(32, activation='relu')(age_output)
-        age_output = Dense(1, activation='linear', name='age_output')(age_output)
+        self.age_1 = layers.Dense(64, activation='relu')
+        self.age_2 = layers.Dense(32, activation='relu')
+        self.age_output = layers.Dense(1, activation='linear', name='age_output')
 
         # Task 3: Gender Classification (Binary Classification)
-        gender_output = Dense(1, activation='sigmoid', name='gender_output')(x)
+        self.gender_output = layers.Dense(1, activation='sigmoid', name='gender_output')
 
-        # Build and assign the model
-        self.model = Model(inputs=base_model.input, outputs=[face_output, age_output, gender_output])
+    def call(self, inputs):
+        # Forward pass through ResNet50
+        x = self.base_model(inputs)
+        x = layers.GlobalAveragePooling2D()(x)
 
-    def compile_model(self):
-        if self.model is None:
-            raise Exception("Model not built. Call 'build_model()' first.")
-        
-        # Compile the model with task-specific losses and metrics
-        self.model.compile(optimizer=Adam(),
-                           loss={
-                               'face_output': 'binary_crossentropy',
-                               'age_output': 'mean_squared_error',
-                               'gender_output': 'binary_crossentropy'
-                           },
-                           metrics={
-                               'face_output': 'accuracy',
-                               'age_output': 'mae',
-                               'gender_output': 'accuracy'
-                           })
-    
-    def train(self, train_dataset, val_dataset, epochs=10):
-        if self.model is None:
-            raise Exception("Model not built. Call 'build_model()' first.")
-        
-        # Train the model
-        history = self.model.fit(train_dataset,
-                                 validation_data=val_dataset,
-                                 epochs=epochs)
-        return history
-    
-    def evaluate(self, val_dataset):
-        if self.model is None:
-            raise Exception("Model not built. Call 'build_model()' first.")
-        
-        # Evaluate the model
-        results = self.model.evaluate(val_dataset)
-        return results
-    
-    def save_model(self, filepath):
-        if self.model is None:
-            raise Exception("Model not built. Call 'build_model()' first.")
-        
-        # Save the model to a file
-        self.model.save(filepath)
+        # Face presence
+        face_out = self.face_output(x)
+
+        # Age Prediction
+        age_x = self.age_1(x)
+        age_x = self.age_2(age_x)
+        age_out = self.age_output(age_x)
+
+        # Gender Prediction
+        gender_out = self.gender_output(x)
+
+        # Return all three outputs
+        return {"face_output": face_out,
+                "age_output": age_out,
+                "gender_output": gender_out}
+
+    @override
+    def compile(self,
+                optimizer=optimizers.Adam(),
+                loss=None,
+                loss_weights=None,
+                metrics=None,
+                weighted_metrics=None,
+                run_eagerly=False,
+                steps_per_execution=1,
+                jit_compile="auto",
+                auto_scale_loss=True):
+        # Init default values
+        if loss is None:
+            loss = {"face_output": "binary_crossentropy",
+                    "age_output": "binary_crossentropy",
+                    "gender_output": "binary_crossentropy"}
+        if metrics is None:
+            metrics = {
+                'face_output': 'accuracy',
+                'age_output': 'mae',
+                'gender_output': 'accuracy'}
+        # Compile Model
+        super().compile(optimizer, loss, loss_weights, metrics, weighted_metrics, run_eagerly, steps_per_execution,
+                        jit_compile, auto_scale_loss)
