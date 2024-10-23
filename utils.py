@@ -1,31 +1,49 @@
 import os
-import cv2
+
+from keras import utils
 import numpy as np
-import tensorflow as tf
-from sklearn.model_selection import train_test_split
 
 def load_data(image_directory):
     images = []
     labels = []
-    
     for filename in os.listdir(image_directory):
-        if filename.endswith('.jpg'):
-            # Split the filename into components
-            parts = filename.split('_')
-            if len(parts) < 4:
-                continue
-            
-            # Extract labels from filename
+        if not filename.endswith('.jpg'):
+            continue
+
+        # Split the filename into components
+        parts = filename.split('_')
+        if len(parts) < 4:
+            continue
+
+        age = None
+        gender = None
+        # Extract labels from filename
+        try:
             age = int(parts[0])  # Convert age to int
+        except ValueError:
+            print(f"Age {parts[0]} is not a valid number. File '{filename}'")
+            continue
+
+        try:
             gender = int(parts[1])  # Convert gender to int
-            race = int(parts[2])  # Convert race to int
-            
-            # Load the image
-            image_path = os.path.join(image_directory, filename)
-            image = cv2.imread(image_path)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
-            image = cv2.resize(image, (128, 128))  # Resize to a fixed size
-            images.append(image)
-            labels.append([age, gender, race])
-    
+        except ValueError:
+            print(f"Gender {parts[1]} is not a valid number. File '{filename}'")
+            continue
+
+        image = utils.load_img(
+            path=os.path.join(image_directory, filename),
+            color_mode="rgb",
+            target_size=(128, 128),
+            interpolation="bilinear",
+            keep_aspect_ratio=False
+        )
+
+        if image is None:
+            print(f"Image {filename} was not loaded.")
+            continue
+
+        image_array = utils.img_to_array(image)
+        images.append(image_array)
+        labels.append([1, age, gender]) # 1 at the front signals face present
+
     return np.array(images), np.array(labels)
