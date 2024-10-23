@@ -28,4 +28,4 @@ results = model.evaluate(x=images_train,
                          batch_size=32,
                          return_dict=True)
 
-model.save('saved_models/multitask_resnet_model.h5')
+model.save('saved_models/multitask_resnet_model.keras')
