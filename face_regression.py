@@ -3,8 +3,11 @@ from sklearn.model_selection import train_test_split
 import tensorflow as tf
 from models import MultitaskResNet
 
-image_directory = 'data/utk-face/UTKFace'  # Update with your dataset path
-images, labels = load_data(image_directory)
+face_directory = 'data/utk-face/UTKFace'
+non_face_directory = 'data/nonface/imagenet_images'
+
+# Load the data
+images, labels = load_data(face_directory, non_face_directory)
 
 # Split the dataset into training and validation sets
 X_train, X_val, y_train, y_val = train_test_split(images, labels, test_size=0.2, random_state=42)
