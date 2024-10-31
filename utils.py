@@ -37,6 +37,6 @@ def load_data(face_directory, non_face_directory):
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 image = cv2.resize(image, (128, 128))
                 images.append(image)
-                labels.append([0, 0, 0])  # Label '0' for non-face images, no age/gender
+                labels.append([0, 300, 2])  # Label '0' for non-face images, no age/gender
 
     return np.array(images), np.array(labels)

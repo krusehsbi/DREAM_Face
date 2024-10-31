@@ -2,6 +2,7 @@ from utils import load_data
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
 from models import MultitaskResNet
+import csv
 
 # Define directories
 face_directory = 'data/utk-face/UTKFace'
@@ -25,27 +26,41 @@ y_test_face, y_test_age, y_test_gender = y_test[:, 0], y_test[:, 1], y_test[:, 2
 # Create TensorFlow datasets for train, validation, and test sets
 train_dataset = tf.data.Dataset.from_tensor_slices((X_train, {'face_output': y_train_face, 
                                                               'age_output': y_train_age, 
-                                                              'gender_output': y_train_gender})).batch(32)
+                                                              'gender_output': y_train_gender})).batch(64)
 
 val_dataset = tf.data.Dataset.from_tensor_slices((X_val, {'face_output': y_val_face, 
                                                           'age_output': y_val_age, 
-                                                          'gender_output': y_val_gender})).batch(32)
+                                                          'gender_output': y_val_gender})).batch(64)
 
 test_dataset = tf.data.Dataset.from_tensor_slices((X_test, {'face_output': y_test_face, 
                                                             'age_output': y_test_age, 
-                                                            'gender_output': y_test_gender})).batch(32)
+                                                            'gender_output': y_test_gender})).batch(64)
 
 # Instantiate and compile the model
 model = MultitaskResNet(input_shape=(128, 128, 3))
 model.build_model()
 model.compile_model()
 
+# Define early stopping callback
+early_stopping = tf.keras.callbacks.EarlyStopping(
+    monitor='val_loss',  # Metric to monitor
+    patience=3,          # Number of epochs with no improvement after which training will be stopped
+    restore_best_weights=True  # Whether to restore model weights from the epoch with the best value of the monitored quantity
+)
+
 # Train the model
-history = model.train(train_dataset, val_dataset, epochs=10)
+history = model.train(train_dataset, val_dataset, epochs=500, callbacks=[early_stopping])
 
 # Final evaluation on test set
 test_results = model.evaluate(test_dataset)
 print("Test results:", test_results)
 
 # Save the trained model
-model.save_model('saved_models/multitask_resnet_model.h5')
+model.save_model('saved_models/multitask_resnet_model_dropout05.h5')
+
+with open('saved_models/training_history_dropout05.csv', mode='w', newline='') as file:
+    writer = csv.writer(file)
+    # Write header
+    writer.writerow(history.history.keys())
+    # Write data
+    writer.writerows(zip(*history.history.values()))
