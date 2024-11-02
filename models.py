@@ -68,6 +68,7 @@ class MultitaskResNet(keras.Model):
                 'face_output': 'accuracy',
                 'age_output': 'mae',
                 'gender_output': 'accuracy'}
+
         # Compile Model
         super().compile(optimizer, loss, loss_weights, metrics, weighted_metrics, run_eagerly, steps_per_execution,
                         jit_compile, auto_scale_loss)
