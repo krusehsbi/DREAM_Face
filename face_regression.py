@@ -36,9 +36,13 @@ labels_val_face, labels_val_age, labels_val_gender = labels_val[:, 0], labels_va
 labels_test_face, labels_test_age, labels_test_gender = labels_test[:, 0], labels_test[:, 1], labels_test[:, 2]
 
 # Create Model
-model = MultitaskResNet(input_shape=(128, 128, 3))
-model.compile()
+input_shape = (128, 128, 3)
+model = MultitaskResNet(input_shape)
+model.build(input_shape)
 model.summary()
+
+model.compile()
+
 
 
 # Define early stopping callback

@@ -26,6 +26,21 @@ class MultitaskResNet(keras.Model):
         # Task 3: Gender Classification (Binary Classification)
         self.gender_output = layers.Dense(1, activation='sigmoid', name='gender_output')
 
+    def build(self, input_shape):
+        self.base_model.build(input_shape)
+        input_shape = self.base_model.output_shape
+
+        self.face_output.build(input_shape)
+
+        self.age_1.build(input_shape)
+        age_shape = self.age_1.compute_output_shape(input_shape)
+        self.age_2.build(age_shape)
+        age_shape = self.age_2.compute_output_shape(age_shape)
+        self.age_output.build(age_shape)
+
+        self.gender_output.build(input_shape)
+        self.built = True
+
     def call(self, inputs):
         # Forward pass through ResNet50
         x = self.base_model(inputs)
