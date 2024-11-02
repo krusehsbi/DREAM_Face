@@ -1,0 +1,3 @@
+tensorflow[and-cuda]==2.61
+
+-r requirements-common.txt
