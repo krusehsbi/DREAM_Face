@@ -1,15 +1,28 @@
-from utils import load_data
+from utils import load_data, deserialize_saved_data, serialize_loaded_data
 from sklearn.model_selection import train_test_split
 from models import MultitaskResNet
 from keras import callbacks
 import csv
+
+FORCE_LOAD_DATA = False
+SERIALIZE_DATA = True
 
 # Define directories
 face_directory = 'data/utk-face'
 non_face_directory = 'data/nonface/imagenet_images'
 
 # Load images and labels from both face and non-face directories
-images, labels = load_data(face_directory, non_face_directory)
+images, labels = None, None
+
+if not FORCE_LOAD_DATA:
+    images, labels = deserialize_saved_data()
+
+if FORCE_LOAD_DATA or images is None or labels is None or len(images) == 0 or len(labels) == 0:
+    images, labels = load_data(face_directory, non_face_directory)
+
+    if SERIALIZE_DATA:
+        serialize_loaded_data(images, labels)
+
 
 # Step 1: Split data into training (80%) and test+validation (20%) sets
 images_train, images_temp, labels_train, labels_temp = train_test_split(images, labels, test_size=0.2, random_state=42)
