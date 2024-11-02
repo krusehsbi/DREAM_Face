@@ -5,29 +5,30 @@ DREAM-Face: Deep Regression for Estimating Age and Metrics from Face Data
 Place the pictures from [UTKFace](https://susanqq.github.io/UTKFace/) into subdirectory **data/utk-face**
 
 ## Setup
+### Option 1: install script (GPU and CPU)
+Execute the install-dependencies.sh script in the root directory of your project.
+
+### Option 2: requirements.txt (ONLY CPU)
+Install all the requirements from the requirements.txt in case you are only using CPU.
+
+### Option 3: requirements-yourPlatform.txt (CPU AND GPU)
+Select the requirements file you want to use for your specific hardware and execute this command
+
 ```
-pip install --upgrade pip
+pip install -r requirements-yourPlafrom.txt
 ```
+e.g.
 ```
-pip install tensorflow[and-cuda]==2.16.1
+pip install -r requirements-cuda.txt   # for NVIDIA
+pip install -r requirements-rocm.txt   # for AMD
+pip install -r requirements-cpu.txt    # for CPU
 ```
-```
-pip install keras
-```
-```
-pip install scikit-learn
-```
-```
-pip install matplotlib
-```
-```
-pip install opencv-python
-```
+
 ### Verify the installation worked
 ```
 python3 -c "import tensorflow as tf; print(tf.config.list_physical_devices('GPU'))"
 ```
-#### !! IF THE INSTALLATION DID NOT WORK AND THE GPU IS NOT RECOGNIZED TRY THIS !!
+#### !! IF THE INSTALLATION DID WORK FOR CUDA BUT THE GPU IS NOT RECOGNIZED TRY THIS !!
 * Create symbolic links to NVIDIA shared libraries:
 ```
 pushd $(dirname $(python -c 'print(__import__("tensorflow").__file__)'))
