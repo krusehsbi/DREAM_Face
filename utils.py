@@ -18,7 +18,7 @@ def load_image_as_array(directory, filename):
         print(f"Image {filename} was not loaded.")
         return None
 
-    image_array = utils.img_to_array(image)
+    image_array = utils.img_to_array(image, dtype=np.uint8)
     image.close()
     return image_array
 
