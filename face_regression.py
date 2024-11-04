@@ -4,7 +4,7 @@ from models import MultitaskResNet
 from keras import callbacks
 import csv
 
-FORCE_LOAD_DATA = False
+DESERIALIZE_DATA = True
 SERIALIZE_DATA = True
 
 # Define directories
@@ -12,16 +12,7 @@ face_directory = ['data/utk-face', 'data/utk-face/UTKFace']
 non_face_directory = ['data/nonface/imagenet_images']
 
 # Load images and labels from both face and non-face directories
-images, labels = None, None
-
-if not FORCE_LOAD_DATA:
-    images, labels = deserialize_saved_data()
-
-if FORCE_LOAD_DATA or images is None or labels is None or len(images) == 0 or len(labels) == 0:
-    images, labels = load_data(face_directory, non_face_directory)
-
-    if SERIALIZE_DATA:
-        serialize_loaded_data(images, labels)
+images, labels = load_data(face_directory, non_face_directory, deserialize_data=DESERIALIZE_DATA, serialize_data=SERIALIZE_DATA)
 
 
 # Step 1: Split data into training (80%) and test+validation (20%) sets
