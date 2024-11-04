@@ -17,14 +17,35 @@ class MultitaskResNet(models.Model):
         self.face_output = layers.Dense(1, activation='sigmoid', name='face_output')
 
         # Task 2: Age Prediction (Regression) with additional dense layers
-        self.age_1 = layers.Dense(64, activation='relu')
-        self.age_2 = layers.Dense(32, activation='relu')
+        self.age_1 = layers.Dense(64, activation='relu', name='age_1')
+        self.age_2 = layers.Dense(32, activation='relu', name='age_2')
         self.age_output = layers.Dense(1, activation='linear', name='age_output')
 
         # Task 3: Gender Classification (Binary Classification)
-        self.gender_1 = layers.Dense(64, activation='relu') # First dense layer
-        self.gender_2 = layers.Dense(32, activation='relu') # Second dense layer
+        self.gender_1 = layers.Dense(64, activation='relu', name='gender_1') # First dense layer
+        self.gender_2 = layers.Dense(32, activation='relu', name='gender_2') # Second dense layer
         self.gender_output = layers.Dense(3, activation='softmax', name='gender_output')
+
+    def build(self, *kwargs):
+        self.base_model.build(self.input_shape)
+        x = self.base_model.output_shape
+        self.pooling_1.build(x)
+        x = self.pooling_1.compute_output_shape(x)
+
+        self.face_output.build(x)
+
+        self.age_1.build(x)
+        age_shape = self.age_1.compute_output_shape(x)
+        self.age_2.build(age_shape)
+        age_shape = self.age_2.compute_output_shape(age_shape)
+        self.age_output.build(age_shape)
+
+        self.gender_1.build(x)
+        gender_shape = self.gender_1.compute_output_shape(x)
+        self.gender_2.build(gender_shape)
+        gender_shape = self.gender_2.compute_output_shape(gender_shape)
+        self.gender_output.build(gender_shape)
+        self.built = True
 
     def call(self, inputs):
         # Shared layers (common backbone)
