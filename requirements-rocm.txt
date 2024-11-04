@@ -1,0 +1,3 @@
+tensorflow_rocm==2.16.1
+
+-r requirements-common.txt
