@@ -1,3 +1,4 @@
+import keras
 import matplotlib.pyplot as plt
 
 from utils import load_data, deserialize_saved_data, serialize_loaded_data
@@ -30,11 +31,9 @@ labels_val_face, labels_val_age, labels_val_gender = labels_val[:, 0], labels_va
 labels_test_face, labels_test_age, labels_test_gender = labels_test[:, 0], labels_test[:, 1], labels_test[:, 2]
 
 # Create Model
-input_shape = (128, 128, 3)
-model = MultitaskResNet(input_shape)
-model.build(input_shape)
+model = MultitaskResNet(input_shape=(128, 128, 3))
+model.build()
 model.summary()
-
 model.compile()
 
 
@@ -45,6 +44,7 @@ early_stopping = callbacks.EarlyStopping(
     patience=3,          # Number of epochs with no improvement after which training will be stopped
     restore_best_weights=True  # Whether to restore model weights from the epoch with the best value of the monitored quantity
 )
+
 
 # Training and Evaluation
 history = model.fit(x=images_train,

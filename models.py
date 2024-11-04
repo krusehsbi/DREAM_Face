@@ -65,6 +65,7 @@ class MultitaskResNet(keras.Model):
             input_shape=input_shape,
             weights='imagenet')
         self.base_model.trainable = False  # Freeze the base model
+        self.pooling_1 = layers.GlobalAveragePooling2D()
 
         self.face_output = layers.Dense(1, activation='sigmoid', name='face_output')
 
@@ -78,20 +79,22 @@ class MultitaskResNet(keras.Model):
         self.gender_2 = layers.Dense(32, activation='relu')
         self.gender_output = layers.Dense(1, activation='sigmoid', name='gender_output')
 
-    def build(self, input_shape):
-        self.base_model.build(input_shape)
-        input_shape = self.base_model.output_shape
+    def build(self, *kwargs):
+        self.base_model.build(self.input_shape)
+        x = self.base_model.output_shape
+        self.pooling_1.build(x)
+        x = self.pooling_1.compute_output_shape(x)
 
-        self.face_output.build(input_shape)
+        self.face_output.build(x)
 
-        self.age_1.build(input_shape)
-        age_shape = self.age_1.compute_output_shape(input_shape)
+        self.age_1.build(x)
+        age_shape = self.age_1.compute_output_shape(x)
         self.age_2.build(age_shape)
         age_shape = self.age_2.compute_output_shape(age_shape)
         self.age_output.build(age_shape)
 
-        self.gender_1.build(input_shape)
-        gender_shape = self.gender_1.compute_output_shape(input_shape)
+        self.gender_1.build(x)
+        gender_shape = self.gender_1.compute_output_shape(x)
         self.gender_2.build(gender_shape)
         gender_shape = self.gender_2.compute_output_shape(gender_shape)
         self.gender_output.build(gender_shape)
@@ -100,20 +103,20 @@ class MultitaskResNet(keras.Model):
     def call(self, inputs):
         # Forward pass through ResNet50
         x = self.base_model(inputs)
-        x = layers.GlobalAveragePooling2D()(x)
+        x = self.pooling_1(x)
 
         # Face presence
         face_out = self.face_output(x)
 
         # Age Prediction
-        age_x = self.age_1(x)
-        age_x = self.age_2(age_x)
-        age_out = self.age_output(age_x)
+        age_out = self.age_1(x)
+        age_out = self.age_2(age_out)
+        age_out = self.age_output(age_out)
 
         # Gender Prediction
-        gender_x = self.gender_1(x)
-        gender_x = self.gender_2(gender_x)
-        gender_out = self.gender_output(gender_x)
+        gender_out = self.gender_1(x)
+        gender_out = self.gender_2(gender_out)
+        gender_out = self.gender_output(gender_out)
 
         # Return all three outputs
         return {"face_output": face_out,
@@ -134,7 +137,7 @@ class MultitaskResNet(keras.Model):
         if loss is None:
             loss = {"face_output": "binary_crossentropy",
                     "age_output": "mean_squared_error",
-                    "gender_output": "binary_crossentropy"}
+                    "gender_output": "sparse_categorical_crossentropy"}
         if metrics is None:
             metrics = {
                 'face_output': 'accuracy',
