@@ -31,9 +31,9 @@ labels_test_face, labels_test_age, labels_test_gender = labels_test[:, 0], label
 
 # Instantiate and compile the model
 model = MultitaskResNet(input_shape=(128, 128, 3))
-model.build_model()
+model.build()
 model.summary()
-model.compile_model()
+model.compile()
 
 # Define early stopping callback
 early_stopping = callbacks.EarlyStopping(
@@ -44,7 +44,7 @@ early_stopping = callbacks.EarlyStopping(
 )
 
 # Train the model
-history = model.train(x=images_train,
+history = model.fit(x=images_train,
                       y={'face_output': labels_train_face,
                          'age_output': labels_train_age,
                          'gender_output': labels_train_gender},
@@ -115,7 +115,7 @@ results = model.evaluate(x=images_test,
 print("Test results:", results)
 
 # Save the trained model
-model.save_model('saved_models/multitask_resnet_model_dropout0502.h5')
+model.save('saved_models/multitask_resnet_model_dropout0502.keras')
 
 with open('saved_models/training_history_dropout0502.csv', mode='w', newline='') as file:
     writer = csv.writer(file)

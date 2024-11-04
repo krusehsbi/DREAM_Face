@@ -6,34 +6,48 @@ class MultitaskResNet:
         self.input_shape = input_shape
         self.model = None
 
-    def build_model(self):
         # Load the ResNet50 model without the top layer (pretrained on ImageNet)
-        base_model = applications.ResNet50(include_top=False, input_shape=self.input_shape, weights='imagenet')
-        base_model.trainable = False  # Freeze the base model
+        self.base_model = applications.ResNet50(include_top=False, input_shape=self.input_shape, weights='imagenet')
+        self.base_model.trainable = False  # Freeze the base model
 
         # Shared layers (common backbone)
-        x = base_model.output
+        self.pooling_1 = layers.GlobalAveragePooling2D()
+
+        # Task 1: Face/No-Face Classification (Binary Classification)
+        self.face_output = layers.Dense(1, activation='sigmoid', name='face_output')
+
+        # Task 2: Age Prediction (Regression) with additional dense layers
+        self.age_1 = layers.Dense(64, activation='relu')
+        self.age_2 = layers.Dense(32, activation='relu')
+        self.age_output = layers.Dense(1, activation='linear', name='age_output')
+
+        # Task 3: Gender Classification (Binary Classification)
+        self.gender_1 = layers.Dense(64, activation='relu') # First dense layer
+        self.gender_2 = layers.Dense(32, activation='relu') # Second dense layer
+        self.gender_output = layers.Dense(3, activation='softmax', name='gender_output')
+
+    def build(self):
+        # Shared layers (common backbone)
+        x = self.base_model.output
         x = layers.GlobalAveragePooling2D()(x)
 
         # Task 1: Face/No-Face Classification (Binary Classification)
-        face_output = layers.Dense(1, activation='sigmoid', name='face_output')(x)
+        face_out = self.face_output(x)
 
         # Task 2: Age Prediction (Regression) with additional dense layers
-        age_output = layers.Dense(64, activation='relu')(x)
-        age_output = layers.Dense(32, activation='relu')(age_output)
-        age_output = layers.Dense(1, activation='linear', name='age_output')(age_output)
+        age_out = self.age_1(x)
+        age_out = self.age_2(age_out)
+        age_out = self.age_output(age_out)
 
         # Task 3: Gender Classification (Binary Classification)
-        gender_output = layers.Dense(64, activation='relu')(x)  # First dense layer
-        gender_output = layers.Dense(32, activation='relu')(gender_output)  # Second dense layer
-        gender_output = layers.Dense(3, activation='softmax', name='gender_output')(gender_output)
-
-        
+        gender_out = self.gender_1(x)  # First dense layer
+        gender_out = self.gender_2(gender_out)  # Second dense layer
+        gender_out = self.gender_output(gender_out)
 
         # Build and assign the model
-        self.model = models.Model(inputs=base_model.input, outputs=[face_output, age_output, gender_output])
+        self.model = models.Model(inputs=self.base_model.input, outputs=[face_out, age_out, gender_out])
 
-    def compile_model(self):
+    def compile(self):
         if self.model is None:
             raise Exception("Model not built. Call 'build_model()' first.")
         
@@ -49,31 +63,12 @@ class MultitaskResNet:
                                'age_output': 'mae',
                                'gender_output': 'accuracy'
                            })
-    
-    def train(self, train_dataset, val_dataset, epochs=10, callbacks=None):
-        if self.model is None:
-            raise Exception("Model not built. Call 'build_model()' first.")
-        
-        # Train the model
-        history = self.model.fit(train_dataset,
-                                 validation_data=val_dataset,
-                                 epochs=epochs,
-                                 callbacks=callbacks)
-        return history
 
-    def train(self, x, y, validation_data, epochs, batch_size, callbacks):
+    def fit(self, x, y, validation_data, epochs, batch_size, callbacks):
         if self.model is None:
             raise Exception("Model not built. Call 'build_model()' first.")
 
         return self.model.fit(x, y, validation_data=validation_data, epochs=epochs, batch_size=batch_size, callbacks=callbacks)
-    
-    def evaluate(self, val_dataset):
-        if self.model is None:
-            raise Exception("Model not built. Call 'build_model()' first.")
-        
-        # Evaluate the model
-        results = self.model.evaluate(val_dataset)
-        return results
 
     def evaluate(self, x, y, batch_size, return_dict=False):
         if self.model is None:
@@ -81,7 +76,7 @@ class MultitaskResNet:
 
         self.model.evaluate(x, y, batch_size=batch_size, verbose=2, return_dict=return_dict)
     
-    def save_model(self, filepath):
+    def save(self, filepath):
         if self.model is None:
             raise Exception("Model not built. Call 'build_model()' first.")
         
