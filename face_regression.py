@@ -1,4 +1,4 @@
-from utils import load_data, load_data_old
+from utils import load_data
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
 from models import MultitaskResNet
@@ -9,7 +9,7 @@ face_directory = ['data/utk-face', 'data/utk-face/UTKFace']
 non_face_directory = ['data/nonface/imagenet_images']
 
 # Load images and labels from both face and non-face directories
-images, labels = load_data_old(face_directory, non_face_directory, True, True)
+images, labels = load_data(face_directory, non_face_directory, True, True)
 
 # Step 1: Split data into training (80%) and test+validation (20%) sets
 X_train, X_temp, y_train, y_temp = train_test_split(images, labels, test_size=0.2, random_state=42)

@@ -34,34 +34,31 @@ def load_non_face_data(
         # Only load images if this is a class directory
         return
 
-    non_face_images, non_face_labels = load_non_face_dir(directory, deserialize_data, serialize_data)
-    append_list(images, non_face_images)
-    append_list(labels, non_face_labels)
+    load_non_face_dir(directory, images, labels, deserialize_data, serialize_data)
 
 
-def load_non_face_dir(directory, deserialize_data, serialize_data):
+def load_non_face_dir(directory, images, labels, deserialize_data, serialize_data):
     class_name = os.path.basename(directory)
     if deserialize_data:
-        images, labels = deserialize_saved_data("non_face_" + class_name)
+        images_temp, labels_temp = deserialize_saved_data("non_face_" + class_name)
     else:
-        images, labels = [], []
+        images_temp, labels_temp = [], []
 
-    if len(images) == 0 or len(labels) == 0:
+    if len(images_temp) == 0 or len(labels_temp) == 0:
+        # Load non-face images
         for filename in os.listdir(directory):
             if not filename.endswith('.jpg'):
                 continue
 
-            image_array = load_image_as_array(directory, filename)
-            if image_array is None:
-                continue
-
-            images.append(image_array)
-            labels.append([0, 200, 200])  # 0 at the front signals no face present
+            image = load_image_as_array(directory, filename)
+            images_temp.append(image)
+            labels_temp.append([0, 200, 2])  # Label '0' for non-face images, no age/gender
 
         if serialize_data:
-            serialize_loaded_data(images, labels, "non_face_" + class_name)
+            serialize_loaded_data(images_temp, labels_temp, "non_face_" + class_name)
 
-    return images, labels
+    append_list(images, images_temp)
+    append_list(labels, labels_temp)
 
 def load_face_data(
         directory,
@@ -113,34 +110,13 @@ def append_list(a, b):
     for i in range(len(b)):
         a.append(b[i])
 
-
-def load_data(image_directories : [str],
-              non_face_directories : [str],
-              deserialize_data = True,
-              serialize_data = True):
-    images = []
-    labels = []
-    # Load face images
-    print("Loading faces")
-    for image_directory in image_directories:
-        if not os.path.isdir(image_directory):
-            print(f'{image_directory} does not exist checking next directory.')
-            continue
-
-        load_face_data(image_directory, images, labels, deserialize_data, serialize_data)
-
-    print("Loading non-faces")
-    for non_face_directory in non_face_directories:
-        if not os.path.isdir(non_face_directory):
-            print(f'{non_face_directory} does not exist checking next directory.')
-            continue
-
-        load_non_face_data(non_face_directory, images, labels, deserialize_data, serialize_data)
-
-    return np.array(images), np.array(labels)
-
 def serialize_loaded_data(images, labels, name):
     print(f"Serializing Data '{name}' to data/tmp")
+
+    if len(images) == 0 or len(labels) == 0:
+        print(f"{name} does not contain any images or labels to serialize and will be skipped.")
+        return
+
     os.makedirs("data/tmp", exist_ok=True)
     with open(f"data/tmp/{name}.pickle", 'ab') as file:
         pickle.dump((images, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
@@ -159,7 +135,7 @@ def deserialize_saved_data(name):
         print(f"Dataset {name} does not exist and will now be generated.")
     return images, labels
 
-def load_data_old(
+def load_data(
         face_directories,
         non_face_directories,
         deserialize_data = True,
@@ -181,16 +157,6 @@ def load_data_old(
             print(f'{non_face_directory} does not exist checking next directory.')
             continue
 
-        # Load non-face images
-        for class_name in os.listdir(non_face_directory):
-            class_path = os.path.join(non_face_directory, class_name)
-            if not os.path.isdir(class_path):
-                continue
-
-            for filename in os.listdir(class_path):
-                if filename.endswith('.jpg'):
-                    image = load_image_as_array(class_path, filename)
-                    images.append(image)
-                    labels.append([0, 200, 2])  # Label '0' for non-face images, no age/gender
+        load_non_face_data(non_face_directory, images, labels, deserialize_data, serialize_data)
 
     return np.array(images), np.array(labels)
