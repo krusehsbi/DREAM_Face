@@ -2,15 +2,25 @@ import os
 import pickle
 
 import numpy as np
-import cv2
+from keras import utils
 
 
 def load_image_as_array(directory, filename):
-    image_path = os.path.join(directory, filename)
-    image = cv2.imread(image_path)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
-    image = cv2.resize(image, (128, 128))  # Resize to a fixed size
-    return image
+    image = utils.load_img(
+        path=os.path.join(directory, filename),
+        color_mode="rgb",
+        target_size=(128, 128),
+        interpolation="bilinear",
+        keep_aspect_ratio=False
+    )
+
+    if image is None:
+        print(f"Image {filename} was not loaded.")
+        return None
+
+    image_array = utils.img_to_array(image, dtype=np.uint8)
+    image.close()
+    return image_array
 
 
 def get_subdirectories(directory):
