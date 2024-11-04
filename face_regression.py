@@ -4,11 +4,11 @@ from models import MultitaskResNet
 from keras import callbacks
 import csv
 
-FORCE_LOAD_DATA = False
-SERIALIZE_DATA = True
+FORCE_LOAD_DATA = True
+SERIALIZE_DATA = False
 
 # Define directories
-face_directory = 'data/utk-face'
+face_directory = 'data/utk-face/UTKFace'
 non_face_directory = 'data/nonface/imagenet_images'
 
 # Load images and labels from both face and non-face directories

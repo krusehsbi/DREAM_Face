@@ -1,5 +1,3 @@
-from typing import override
-
 from keras import applications, layers, models, optimizers
 import keras
 
@@ -17,7 +15,6 @@ class SingletaskResNet(keras.Model):
 
         self.face_output = layers.Dense(1, activation='sigmoid', name='face_output')
 
-    @override
     def build(self, input_shape):
         self.base_model.build(input_shape)
         input_shape = self.base_model.output_shape
@@ -25,7 +22,6 @@ class SingletaskResNet(keras.Model):
         self.face_output.build(input_shape)
         self.built = True
 
-    @override
     def call(self, inputs):
         # Forward pass through ResNet50
         x = self.base_model(inputs)
@@ -37,7 +33,6 @@ class SingletaskResNet(keras.Model):
         # Return all three outputs
         return {"face_output": face_out}
 
-    @override
     def compile(self,
                 optimizer=optimizers.Adam(),
                 loss=None,
@@ -83,7 +78,6 @@ class MultitaskResNet(keras.Model):
         self.gender_2 = layers.Dense(32, activation='relu')
         self.gender_output = layers.Dense(1, activation='softmax', name='gender_output')
 
-    @override
     def build(self, input_shape):
         self.base_model.build(input_shape)
         input_shape = self.base_model.output_shape
@@ -103,7 +97,6 @@ class MultitaskResNet(keras.Model):
         self.gender_output.build(gender_shape)
         self.built = True
 
-    @override
     def call(self, inputs):
         # Forward pass through ResNet50
         x = self.base_model(inputs)
@@ -127,7 +120,6 @@ class MultitaskResNet(keras.Model):
                 "age_output": age_out,
                 "gender_output": gender_out}
 
-    @override
     def compile(self,
                 optimizer=optimizers.Adam(),
                 loss=None,

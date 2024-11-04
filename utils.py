@@ -6,6 +6,7 @@ def load_data(image_directory, non_face_directory):
     images = []
     labels = []
 
+    print("Images faces")
     # Load face images
     for filename in os.listdir(image_directory):
         if not filename.endswith('.jpg'):
@@ -47,6 +48,7 @@ def load_data(image_directory, non_face_directory):
         images.append(image_array)
         labels.append([1, age, gender]) # 1 at the front signals face present
 
+    print("Images imagenet")
     if non_face_directory is not None:
         # Load non-face images
         for class_name in os.listdir(non_face_directory):
@@ -59,7 +61,7 @@ def load_data(image_directory, non_face_directory):
                     continue
 
                 image = utils.load_img(
-                    path=os.path.join(image_directory, filename),
+                    path=os.path.join(class_path, filename),
                     color_mode="rgb",
                     target_size=(128, 128),
                     interpolation="bilinear",
