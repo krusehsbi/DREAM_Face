@@ -5,6 +5,7 @@ from sklearn.model_selection import train_test_split
 from models import MultitaskResNet
 from keras import callbacks
 import csv
+import utils_alt
 
 DESERIALIZE_DATA = True
 SERIALIZE_DATA = True
@@ -15,7 +16,7 @@ non_face_directory = ['data/nonface/imagenet_images']
 
 # Load images and labels from both face and non-face directories
 images, labels = load_data(face_directory, non_face_directory, deserialize_data=DESERIALIZE_DATA, serialize_data=SERIALIZE_DATA)
-
+#image_alt, labels_alt = utils_alt.load_data(face_directory[0], non_face_directory[0])
 
 # Step 1: Split data into training (80%) and test+validation (20%) sets
 images_train, images_temp, labels_train, labels_temp = train_test_split(images, labels, test_size=0.2, random_state=42)
