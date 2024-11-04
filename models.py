@@ -26,7 +26,7 @@ class MultitaskResNet(keras.Model):
         # Task 3: Gender Classification (Binary Classification)
         self.gender_1 = layers.Dense(64, activation='relu')
         self.gender_2 = layers.Dense(32, activation='relu')
-        self.gender_output = layers.Dense(1, activation='sigmoid', name='gender_output')
+        self.gender_output = layers.Dense(1, activation='softmax', name='gender_output')
 
     @override
     def build(self, input_shape):
@@ -86,8 +86,8 @@ class MultitaskResNet(keras.Model):
         # Init default values
         if loss is None:
             loss = {"face_output": "binary_crossentropy",
-                    "age_output": "binary_crossentropy",
-                    "gender_output": "binary_crossentropy"}
+                    "age_output": "mean_squared_error",
+                    "gender_output": "sparse_categorical_crossentropy"}
         if metrics is None:
             metrics = {
                 'face_output': 'accuracy',
