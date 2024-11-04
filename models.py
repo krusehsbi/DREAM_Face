@@ -27,12 +27,7 @@ class MultitaskResNet:
 
         # Task 3: Gender Classification (Binary Classification)
         gender_output = Dense(64, activation='sigmoid')(x)  # First dense layer
-        gender_output = Dropout(0.5)(gender_output)          # Dropout layer after the first dense layer
-
-        # Additional dense layer with 32 units
         gender_output = Dense(32, activation='sigmoid')(gender_output)  # Second dense layer
-
-        # Final output layer for gender classification
         gender_output = Dense(3, activation='softmax', name='gender_output')(gender_output)
 
         

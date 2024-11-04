@@ -56,9 +56,9 @@ test_results = model.evaluate(test_dataset)
 print("Test results:", test_results)
 
 # Save the trained model
-model.save_model('saved_models/multitask_resnet_model_dropout05.h5')
+model.save_model('saved_models/multitask_resnet_model_dropout0502.h5')
 
-with open('saved_models/training_history_dropout05.csv', mode='w', newline='') as file:
+with open('saved_models/training_history_dropout0502.csv', mode='w', newline='') as file:
     writer = csv.writer(file)
     # Write header
     writer.writerow(history.history.keys())
