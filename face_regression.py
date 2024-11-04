@@ -8,8 +8,8 @@ FORCE_LOAD_DATA = False
 SERIALIZE_DATA = True
 
 # Define directories
-face_directory = 'data/utk-face'
-non_face_directory = 'data/nonface/imagenet_images'
+face_directory = ['data/utk-face', 'data/utk-face/UTKFace']
+non_face_directory = ['data/nonface/imagenet_images']
 
 # Load images and labels from both face and non-face directories
 images, labels = None, None

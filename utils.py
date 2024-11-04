@@ -2,77 +2,86 @@ import os
 from keras import utils
 import numpy as np
 
-def load_data(image_directory, non_face_directory):
+def load_data(image_directories : [str], non_face_directories : [str]):
     images = []
     labels = []
 
     # Load face images
-    for filename in os.listdir(image_directory):
-        if not filename.endswith('.jpg'):
+    for image_directory in image_directories:
+        if not os.path.isdir(image_directory):
+            print(f'{image_directory} does not exist checking next directory.')
             continue
-
-        # Split the filename into components
-        parts = filename.split('_')
-        if len(parts) < 4:
-            continue
-
-        age = None
-        gender = None
-        # Extract labels from filename
-        try:
-            age = int(parts[0])  # Convert age to int
-        except ValueError:
-            print(f"Age {parts[0]} is not a valid number. File '{filename}'")
-            continue
-
-        try:
-            gender = int(parts[1])  # Convert gender to int
-        except ValueError:
-            print(f"Gender {parts[1]} is not a valid number. File '{filename}'")
-            continue
-
-        image = utils.load_img(
-            path=os.path.join(image_directory, filename),
-            color_mode="rgb",
-            target_size=(128, 128),
-            interpolation="bilinear",
-            keep_aspect_ratio=False
-        )
-
-        if image is None:
-            print(f"Image {filename} was not loaded.")
-            continue
-
-        image_array = utils.img_to_array(image)
-        images.append(image_array)
-        labels.append([1, age, gender]) # 1 at the front signals face present
-
-    if non_face_directory is not None:
-        # Load non-face images
-        for class_name in os.listdir(non_face_directory):
-            class_path = os.path.join(non_face_directory, class_name)
-            if not os.path.isdir(class_path):
+        for filename in os.listdir(image_directory):
+            if not filename.endswith('.jpg'):
                 continue
 
-            for filename in os.listdir(class_path):
-                if not filename.endswith('.jpg'):
+            # Split the filename into components
+            parts = filename.split('_')
+            if len(parts) < 4:
+                continue
+
+            age = None
+            gender = None
+            # Extract labels from filename
+            try:
+                age = int(parts[0])  # Convert age to int
+            except ValueError:
+                print(f"Age {parts[0]} is not a valid number. File '{filename}'")
+                continue
+
+            try:
+                gender = int(parts[1])  # Convert gender to int
+            except ValueError:
+                print(f"Gender {parts[1]} is not a valid number. File '{filename}'")
+                continue
+
+            image = utils.load_img(
+                path=os.path.join(image_directory, filename),
+                color_mode="rgb",
+                target_size=(128, 128),
+                interpolation="bilinear",
+                keep_aspect_ratio=False
+            )
+
+            if image is None:
+                print(f"Image {filename} was not loaded.")
+                continue
+
+            image_array = utils.img_to_array(image)
+            images.append(image_array)
+            labels.append([1, age, gender]) # 1 at the front signals face present
+
+    for non_face_directory in non_face_directories:
+        if not os.path.isdir(non_face_directory):
+            print(f'{non_face_directory} does not exist checking next directory.')
+            continue
+
+        if non_face_directory is not None:
+            # Load non-face images
+            for class_name in os.listdir(non_face_directory):
+                class_path = os.path.join(non_face_directory, class_name)
+                if not os.path.isdir(class_path):
                     continue
 
-                image = utils.load_img(
-                    path=os.path.join(image_directory, filename),
-                    color_mode="rgb",
-                    target_size=(128, 128),
-                    interpolation="bilinear",
-                    keep_aspect_ratio=False
-                )
+                for filename in os.listdir(class_path):
+                    if not filename.endswith('.jpg'):
+                        continue
 
-                if image is None:
-                    print(f"Image {filename} was not loaded.")
-                    continue
+                    image = utils.load_img(
+                        path=os.path.join(class_path, filename),
+                        color_mode="rgb",
+                        target_size=(128, 128),
+                        interpolation="bilinear",
+                        keep_aspect_ratio=False
+                    )
 
-                image_array = utils.img_to_array(image)
-                images.append(image_array)
-                labels.append([0, 200, 200]) # 0 at the front signals no face present
+                    if image is None:
+                        print(f"Image {filename} was not loaded.")
+                        continue
+
+                    image_array = utils.img_to_array(image)
+                    images.append(image_array)
+                    labels.append([0, 200, 200]) # 0 at the front signals no face present
 
     return np.array(images), np.array(labels)
 
