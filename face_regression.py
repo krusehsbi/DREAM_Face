@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+
 from utils import load_data, deserialize_saved_data, serialize_loaded_data
 from sklearn.model_selection import train_test_split
 from models import MultitaskResNet
@@ -51,10 +53,60 @@ history = model.fit(x=images_train,
                     batch_size=64,
                     callbacks=[early_stopping])
 
+plt.plot(history.history['age_output_mae'])
+plt.plot(history.history['val_age_output_mae'])
+plt.title('Age Mean Absolute Error')
+plt.ylabel('Error')
+plt.xlabel('Epoch')
+plt.legend(['train', 'val'], loc='upper left')
+plt.show()
+
+plt.plot(history.history['age_output_loss'])
+plt.plot(history.history['val_age_output_loss'])
+plt.title('Age Loss')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(['train', 'val'], loc='upper left')
+plt.show()
+
+plt.plot(history.history['face_output_accuracy'])
+plt.plot(history.history['val_face_output_accuracy'])
+plt.title('Face Accuracy')
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
+plt.legend(['train', 'val'], loc='upper left')
+plt.show()
+
+plt.plot(history.history['face_output_loss'])
+plt.plot(history.history['val_face_output_loss'])
+plt.title('Face Loss')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(['train', 'val'], loc='upper left')
+plt.show()
+
+plt.plot(history.history['gender_output_accuracy'])
+plt.plot(history.history['val_gender_output_accuracy'])
+plt.title('Gender Accuracy')
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
+plt.legend(['train', 'val'], loc='upper left')
+plt.show()
+
+plt.plot(history.history['gender_output_loss'])
+plt.plot(history.history['val_gender_output_loss'])
+plt.title('Gender Loss')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(['train', 'val'], loc='upper left')
+plt.show()
+
+
 results = model.evaluate(x=images_train,
                          y=[labels_train_face, labels_train_age, labels_train_gender],
                          batch_size=64,
                          return_dict=True)
+
 print("Test results: ", results)
 
 model.save('saved_models/multitask_resnet_model_dropout05.keras')
