@@ -3,6 +3,7 @@ from sklearn.model_selection import train_test_split
 import tensorflow as tf
 from models import MultitaskResNet
 import csv
+from utils import data_augmentation
 
 # Define directories
 face_directory = 'data/utk-face/UTKFace'
@@ -26,7 +27,10 @@ y_test_face, y_test_age, y_test_gender = y_test[:, 0], y_test[:, 1], y_test[:, 2
 # Create TensorFlow datasets for train, validation, and test sets
 train_dataset = tf.data.Dataset.from_tensor_slices((X_train, {'face_output': y_train_face, 
                                                               'age_output': y_train_age, 
-                                                              'gender_output': y_train_gender})).batch(64)
+                                                              'gender_output': y_train_gender}))
+
+train_dataset = train_dataset.map(lambda x, y: (data_augmentation(x), y))
+train_dataset = train_dataset.batch(64)
 
 val_dataset = tf.data.Dataset.from_tensor_slices((X_val, {'face_output': y_val_face, 
                                                           'age_output': y_val_age, 

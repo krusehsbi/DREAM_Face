@@ -1,6 +1,8 @@
 import os
 import cv2
 import numpy as np
+from tensorflow.keras import layers
+import tensorflow as tf
 
 def load_data(face_directory, non_face_directory):
     images = []
@@ -40,3 +42,9 @@ def load_data(face_directory, non_face_directory):
                 labels.append([0, 200, 2])  # Label '0' for non-face images, no age/gender
 
     return np.array(images), np.array(labels)
+
+data_augmentation = tf.keras.Sequential([
+    layers.RandomFlip("horizontal"),            # Randomly flip images horizontally
+    layers.RandomRotation(0.20),                 # Randomly rotate images by up to 10%
+    layers.RandomBrightness(0.2),               # Random brightness adjustment
+])
