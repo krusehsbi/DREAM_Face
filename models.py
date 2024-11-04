@@ -60,6 +60,12 @@ class MultitaskResNet:
                                  epochs=epochs,
                                  callbacks=callbacks)
         return history
+
+    def train(self, x, y, validation_data, epochs, batch_size, callbacks):
+        if self.model is None:
+            raise Exception("Model not built. Call 'build_model()' first.")
+
+        return self.model.fit(x, y, validation_data=validation_data, epochs=epochs, batch_size=batch_size, callbacks=callbacks)
     
     def evaluate(self, val_dataset):
         if self.model is None:
@@ -68,6 +74,12 @@ class MultitaskResNet:
         # Evaluate the model
         results = self.model.evaluate(val_dataset)
         return results
+
+    def evaluate(self, x, y, batch_size, return_dict=False):
+        if self.model is None:
+            raise Exception("Model not built. Call 'build_model()' first.")
+
+        self.model.evaluate(x, y, batch_size=batch_size, verbose=2, return_dict=return_dict)
     
     def save_model(self, filepath):
         if self.model is None:
@@ -75,3 +87,9 @@ class MultitaskResNet:
         
         # Save the model to a file
         self.model.save(filepath)
+
+    def summary(self):
+        if self.model is None:
+            raise Exception("Model not built. Call 'build_model()' first.")
+
+        self.model.summary()
