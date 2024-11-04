@@ -3,6 +3,61 @@ from typing import override
 from keras import applications, layers, models, optimizers
 import keras
 
+class SingletaskResNet(keras.Model):
+    def __init__(self, input_shape=(128, 128, 3)):
+        super().__init__()
+
+        self.input_shape = input_shape
+        # Load the ResNet50 model without the top layer (pretrained on ImageNet)
+        self.base_model = applications.ResNet50(
+            include_top=False,
+            input_shape=input_shape,
+            weights='imagenet')
+        self.base_model.trainable = False  # Freeze the base model
+
+        self.face_output = layers.Dense(1, activation='sigmoid', name='face_output')
+
+    @override
+    def build(self, input_shape):
+        self.base_model.build(input_shape)
+        input_shape = self.base_model.output_shape
+
+        self.face_output.build(input_shape)
+        self.built = True
+
+    @override
+    def call(self, inputs):
+        # Forward pass through ResNet50
+        x = self.base_model(inputs)
+        x = layers.GlobalAveragePooling2D()(x)
+
+        # Face presence
+        face_out = self.face_output(x)
+
+        # Return all three outputs
+        return {"face_output": face_out}
+
+    @override
+    def compile(self,
+                optimizer=optimizers.Adam(),
+                loss=None,
+                loss_weights=None,
+                metrics=None,
+                weighted_metrics=None,
+                run_eagerly=False,
+                steps_per_execution=1,
+                jit_compile="auto",
+                auto_scale_loss=True):
+        # Init default values
+        if loss is None:
+            loss = {"face_output": "binary_crossentropy"}
+        if metrics is None:
+            metrics = {
+                'face_output': 'accuracy'}
+
+        # Compile Model
+        super().compile(optimizer, loss, loss_weights, metrics, weighted_metrics, run_eagerly, steps_per_execution,
+                        jit_compile, auto_scale_loss)
 
 class MultitaskResNet(keras.Model):
     def __init__(self, input_shape=(128, 128, 3)):
@@ -86,8 +141,8 @@ class MultitaskResNet(keras.Model):
         # Init default values
         if loss is None:
             loss = {"face_output": "binary_crossentropy",
-                    "age_output": "mean_squared_error",
-                    "gender_output": "sparse_categorical_crossentropy"}
+                    "age_output": "huber",
+                    "gender_output": "categorical_crossentropy"}
         if metrics is None:
             metrics = {
                 'face_output': 'accuracy',
