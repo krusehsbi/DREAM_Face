@@ -24,8 +24,11 @@ class MultitaskResNet(keras.Model):
         self.age_output = layers.Dense(1, activation='linear', name='age_output')
 
         # Task 3: Gender Classification (Binary Classification)
+        self.gender_1 = layers.Dense(64, activation='relu')
+        self.gender_2 = layers.Dense(32, activation='relu')
         self.gender_output = layers.Dense(1, activation='sigmoid', name='gender_output')
 
+    @override
     def build(self, input_shape):
         self.base_model.build(input_shape)
         input_shape = self.base_model.output_shape
@@ -38,9 +41,14 @@ class MultitaskResNet(keras.Model):
         age_shape = self.age_2.compute_output_shape(age_shape)
         self.age_output.build(age_shape)
 
-        self.gender_output.build(input_shape)
+        self.gender_1.build(input_shape)
+        gender_shape = self.gender_1.compute_output_shape(input_shape)
+        self.gender_2.build(gender_shape)
+        gender_shape = self.gender_2.compute_output_shape(gender_shape)
+        self.gender_output.build(gender_shape)
         self.built = True
 
+    @override
     def call(self, inputs):
         # Forward pass through ResNet50
         x = self.base_model(inputs)
@@ -55,7 +63,9 @@ class MultitaskResNet(keras.Model):
         age_out = self.age_output(age_x)
 
         # Gender Prediction
-        gender_out = self.gender_output(x)
+        gender_x = self.gender_1(x)
+        gender_x = self.gender_2(gender_x)
+        gender_out = self.gender_output(gender_x)
 
         # Return all three outputs
         return {"face_output": face_out,

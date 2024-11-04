@@ -1,5 +1,5 @@
 matplotlib==3.9.2
-numpy==1.25.1
+numpy==1.26.4
 scikit_learn==1.5.2
 keras
 opencv-python
