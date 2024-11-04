@@ -1,7 +1,5 @@
-from tensorflow.keras.applications import ResNet50
-from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
-from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import Adam
+from keras import applications, layers, models, optimizers, Optimizer
+
 
 class MultitaskResNet:
     def __init__(self, input_shape=(128, 128, 3)):
@@ -10,37 +8,37 @@ class MultitaskResNet:
 
     def build_model(self):
         # Load the ResNet50 model without the top layer (pretrained on ImageNet)
-        base_model = ResNet50(include_top=False, input_shape=self.input_shape, weights='imagenet')
+        base_model = applications.ResNet50(include_top=False, input_shape=self.input_shape, weights='imagenet')
         base_model.trainable = False  # Freeze the base model
 
         # Shared layers (common backbone)
         x = base_model.output
-        x = GlobalAveragePooling2D()(x)
+        x = layers.GlobalAveragePooling2D()(x)
 
         # Task 1: Face/No-Face Classification (Binary Classification)
-        face_output = Dense(1, activation='sigmoid', name='face_output')(x)
+        face_output = layers.Dense(1, activation='sigmoid', name='face_output')(x)
 
         # Task 2: Age Prediction (Regression) with additional dense layers
-        age_output = Dense(64, activation='relu')(x)
-        age_output = Dense(32, activation='relu')(age_output)
-        age_output = Dense(1, activation='linear', name='age_output')(age_output)
+        age_output = layers.Dense(64, activation='relu')(x)
+        age_output = layers.Dense(32, activation='relu')(age_output)
+        age_output = layers.Dense(1, activation='linear', name='age_output')(age_output)
 
         # Task 3: Gender Classification (Binary Classification)
-        gender_output = Dense(64, activation='relu')(x)  # First dense layer
-        gender_output = Dense(32, activation='relu')(gender_output)  # Second dense layer
-        gender_output = Dense(3, activation='softmax', name='gender_output')(gender_output)
+        gender_output = layers.Dense(64, activation='relu')(x)  # First dense layer
+        gender_output = layers.Dense(32, activation='relu')(gender_output)  # Second dense layer
+        gender_output = layers.Dense(3, activation='softmax', name='gender_output')(gender_output)
 
         
 
         # Build and assign the model
-        self.model = Model(inputs=base_model.input, outputs=[face_output, age_output, gender_output])
+        self.model = models.Model(inputs=base_model.input, outputs=[face_output, age_output, gender_output])
 
     def compile_model(self):
         if self.model is None:
             raise Exception("Model not built. Call 'build_model()' first.")
         
         # Compile the model with task-specific losses and metrics
-        self.model.compile(optimizer=Adam(),
+        self.model.compile(optimizer=optimizers.Adam(),
                            loss={
                                'face_output': 'binary_crossentropy',
                                'age_output': 'mean_squared_error',

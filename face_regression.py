@@ -5,7 +5,7 @@ from models import MultitaskResNet
 import csv
 
 # Define directories
-face_directory = 'data/utk-face/UTKFace'
+face_directory = 'data/utk-face'
 non_face_directory = 'data/nonface/imagenet_images'
 
 # Load images and labels from both face and non-face directories
