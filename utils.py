@@ -69,32 +69,43 @@ def load_face_data(
         labels,
         deserialize_data,
         serialize_data):
-    # Load face images
-    for filename in os.listdir(directory):
-        if not filename.endswith('.jpg'):
-            continue
+    if deserialize_data:
+        images_temp, labels_temp = deserialize_saved_data("face")
+    else:
+        images_temp, labels_temp = [], []
 
-        # Split the filename into components
-        parts = filename.split('_')
-        if len(parts) < 4:
-            continue
+    if len(images_temp) == 0 or len(labels_temp) == 0:
+        # Load face images
+        for filename in os.listdir(directory):
+            if not filename.endswith('.jpg'):
+                continue
 
-        # Extract labels from filename
-        try:
-            age = int(parts[0])  # Convert age to int
-        except ValueError:
-            print(f"Age {parts[0]} is not a valid number. File '{filename}'")
-            continue
+            # Split the filename into components
+            parts = filename.split('_')
+            if len(parts) < 4:
+                continue
 
-        try:
-            gender = int(parts[1])  # Convert gender to int
-        except ValueError:
-            print(f"Gender {parts[1]} is not a valid number. File '{filename}'")
-            continue
+            # Extract labels from filename
+            try:
+                age = int(parts[0])  # Convert age to int
+            except ValueError:
+                print(f"Age {parts[0]} is not a valid number. File '{filename}'")
+                continue
 
-        image = load_image_as_array(directory, filename)
-        images.append(image)
-        labels.append([1, age, gender])  # Label '1' for face images
+            try:
+                gender = int(parts[1])  # Convert gender to int
+            except ValueError:
+                print(f"Gender {parts[1]} is not a valid number. File '{filename}'")
+                continue
+
+            image = load_image_as_array(directory, filename)
+            images_temp.append(image)
+            labels_temp.append([1, age, gender])  # Label '1' for face images
+
+        if serialize_data:
+            serialize_loaded_data(images_temp, labels_temp, "face")
+
+    append_list(images, images_temp), append_list(labels, labels_temp)
 
 
 # Append b to a
@@ -148,22 +159,38 @@ def deserialize_saved_data(name):
         print(f"Dataset {name} does not exist and will now be generated.")
     return images, labels
 
-def load_data_old(face_directory, non_face_directory):
+def load_data_old(
+        face_directories,
+        non_face_directories,
+        deserialize_data = True,
+        serialize_data = True):
     images = []
     labels = []
 
-    load_face_data(face_directory, images, labels, False, False)
+    # Load face images
+    print("Loading faces")
+    for face_directory in face_directories:
+        if not os.path.isdir(face_directory):
+            print(f'{face_directory} does not exist checking next directory.')
+            continue
+        load_face_data(face_directory, images, labels, deserialize_data, serialize_data)
 
-    # Load non-face images
-    for class_name in os.listdir(non_face_directory):
-        class_path = os.path.join(non_face_directory, class_name)
-        if not os.path.isdir(class_path):
+    print("Loading non-faces")
+    for non_face_directory in non_face_directories:
+        if not os.path.isdir(non_face_directory):
+            print(f'{non_face_directory} does not exist checking next directory.')
             continue
 
-        for filename in os.listdir(class_path):
-            if filename.endswith('.jpg'):
-                image = load_image_as_array(class_path, filename)
-                images.append(image)
-                labels.append([0, 200, 2])  # Label '0' for non-face images, no age/gender
+        # Load non-face images
+        for class_name in os.listdir(non_face_directory):
+            class_path = os.path.join(non_face_directory, class_name)
+            if not os.path.isdir(class_path):
+                continue
+
+            for filename in os.listdir(class_path):
+                if filename.endswith('.jpg'):
+                    image = load_image_as_array(class_path, filename)
+                    images.append(image)
+                    labels.append([0, 200, 2])  # Label '0' for non-face images, no age/gender
 
     return np.array(images), np.array(labels)
