@@ -72,7 +72,7 @@ def load_data(image_directory, non_face_directory):
 
                 image_array = utils.img_to_array(image)
                 images.append(image_array)
-                labels.append([0, -1, -1]) # 0 at the front signals no face present
+                labels.append([0, 200, 200]) # 0 at the front signals no face present
 
     return np.array(images), np.array(labels)
 
