@@ -26,8 +26,8 @@ class MultitaskResNet:
         age_output = Dense(1, activation='linear', name='age_output')(age_output)
 
         # Task 3: Gender Classification (Binary Classification)
-        gender_output = Dense(64, activation='sigmoid')(x)  # First dense layer
-        gender_output = Dense(32, activation='sigmoid')(gender_output)  # Second dense layer
+        gender_output = Dense(64, activation='relu')(x)  # First dense layer
+        gender_output = Dense(32, activation='relu')(gender_output)  # Second dense layer
         gender_output = Dense(3, activation='softmax', name='gender_output')(gender_output)
 
         
