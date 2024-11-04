@@ -31,9 +31,9 @@ labels_test_face, labels_test_age, labels_test_gender = labels_test[:, 0], label
 
 # Instantiate and compile the model
 model = MultitaskResNet(input_shape=(128, 128, 3))
-model.build()
+#model.build()
 model.summary()
-model.compile()
+model.compile_default()
 
 # Define early stopping callback
 early_stopping = callbacks.EarlyStopping(
