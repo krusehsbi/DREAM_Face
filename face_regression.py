@@ -4,6 +4,7 @@ from models import MultitaskResNet
 from keras import callbacks
 import csv
 import matplotlib.pyplot as plt
+from utils import DataGenerator
 
 DESERIALIZE_DATA = True
 SERIALIZE_DATA = True
@@ -43,19 +44,19 @@ early_stopping = callbacks.EarlyStopping(
     # Whether to restore model weights from the epoch with the best value of the monitored quantity
 )
 
-# Train the model
-history = model.fit(x=images_train,
-                      y={'face_output': labels_train_face,
-                         'age_output': labels_train_age,
-                         'gender_output': labels_train_gender},
-                      validation_data=(
-                          images_val,
-                          {'face_output': labels_val_face,
-                           'age_output': labels_val_age,
-                           'gender_output': labels_val_gender}),
-                      epochs=500,
-                      batch_size=64,
-                      callbacks=[early_stopping])
+# Initialize the generator
+train_generator = DataGenerator(images_train, labels_train_face, labels_train_age, labels_train_gender, batch_size=64)
+val_generator = DataGenerator(images_val, labels_val_face, labels_val_age, labels_val_gender, batch_size=64)
+
+# Train the model using the generator
+history = model.fit(
+    train_generator,
+    validation_data=val_generator,
+    epochs=500,
+    callbacks=[early_stopping]
+)
+
+print(history.history.keys())
 
 plt.plot(history.history['age_output_mae'])
 plt.plot(history.history['val_age_output_mae'])
@@ -115,9 +116,9 @@ results = model.evaluate(x=images_test,
 print("Test results:", results)
 
 # Save the trained model
-model.save('saved_models/multitask_resnet_model_dropout0502.keras')
+model.save('saved_models/multitask_resnet_model.keras')
 
-with open('saved_models/training_history_dropout0502.csv', mode='w', newline='') as file:
+with open('saved_models/training_history.csv', mode='w', newline='') as file:
     writer = csv.writer(file)
     # Write header
     writer.writerow(history.history.keys())
