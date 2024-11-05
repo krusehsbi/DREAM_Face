@@ -1,7 +1,7 @@
 from utils import load_data
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
-from models import MultitaskResNet
+from models import MultitaskResNet, MultitaskResNetBaseLine
 import csv
 from utils import data_augmentation
 
@@ -41,7 +41,7 @@ test_dataset = tf.data.Dataset.from_tensor_slices((X_test, {'face_output': y_tes
                                                             'gender_output': y_test_gender})).batch(64)
 
 # Instantiate and compile the model
-model = MultitaskResNet(input_shape=(128, 128, 3))
+model = MultitaskResNetBaseLine(input_shape=(128, 128, 3))
 model.build_model()
 model.compile_model()
 
@@ -60,9 +60,9 @@ test_results = model.evaluate(test_dataset)
 print("Test results:", test_results)
 
 # Save the trained model
-model.save_model('saved_models/multitask_resnet_model_dropout0502.h5')
+model.save_model('saved_models/multitask_resnet_model_baseline.h5')
 
-with open('saved_models/training_history_dropout0502.csv', mode='w', newline='') as file:
+with open('saved_models/training_baseline.csv', mode='w', newline='') as file:
     writer = csv.writer(file)
     # Write header
     writer.writerow(history.history.keys())
