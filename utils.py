@@ -3,7 +3,7 @@ import pickle
 
 import numpy as np
 from keras import utils
-
+from keras.utils import Sequence
 
 def load_image_as_array(directory, filename):
     image = utils.load_img(
@@ -170,3 +170,21 @@ def load_data(
         load_non_face_data(non_face_directory, images, labels, deserialize_data, serialize_data)
 
     return np.array(images), np.array(labels)
+
+class DataGenerator(Sequence):
+    def __init__(self, images, labels_face, labels_age, labels_gender, batch_size):
+        self.images = images
+        self.labels_face = labels_face
+        self.labels_age = labels_age
+        self.labels_gender = labels_gender
+        self.batch_size = batch_size
+
+    def __len__(self):
+        return int(np.ceil(len(self.images) / self.batch_size))
+
+    def __getitem__(self, idx):
+        batch_x = self.images[idx * self.batch_size:(idx + 1) * self.batch_size]
+        batch_y_face = self.labels_face[idx * self.batch_size:(idx + 1) * self.batch_size]
+        batch_y_age = self.labels_age[idx * self.batch_size:(idx + 1) * self.batch_size]
+        batch_y_gender = self.labels_gender[idx * self.batch_size:(idx + 1) * self.batch_size]
+        return batch_x, {'face_output': batch_y_face, 'age_output': batch_y_age, 'gender_output': batch_y_gender}
