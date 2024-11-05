@@ -3,7 +3,6 @@ import pickle
 
 import numpy as np
 from keras import utils
-from keras.utils import Sequence
 
 def load_image_as_array(directory, filename):
     image = utils.load_img(
@@ -171,8 +170,9 @@ def load_data(
 
     return np.array(images), np.array(labels)
 
-class DataGenerator(Sequence):
+class DataGenerator(utils.Sequence):
     def __init__(self, images, labels_face, labels_age, labels_gender, batch_size):
+        super(DataGenerator, self).__init__()
         self.images = images
         self.labels_face = labels_face
         self.labels_age = labels_age
