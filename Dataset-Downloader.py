@@ -21,6 +21,7 @@ def delete_images_with_faces_mtcnn(directory_path):
     num_total_files = len(total_files)
     processed_files = 0
     for filename in total_files:
+        processed_files += 1
         if not filename in filtered_files and filename.endswith((".jpg", ".jpeg", ".png")):
             filtered_files.add(filename)
 
@@ -29,13 +30,11 @@ def delete_images_with_faces_mtcnn(directory_path):
 
             # Detect faces in the image
             faces = detector.detect_faces(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-
-            processed_files += 1
             if faces:
                 os.remove(file_path)
-                print(f"{processed_files / num_total_files * 100}% Deleted {filename} as it contains a face.")
+                print(f"{processed_files / num_total_files * 100:.3f}% Deleted {filename} as it contains a face.")
             else:
-                print(f"{processed_files / num_total_files * 100}% No face detected in {filename}. Keeping file.")
+                print(f"{processed_files / num_total_files * 100:.3f}% No face detected in {filename}. Keeping file.")
 
 def move_files_to_main(directory):
     # Walk through all subdirectories of the specified directory
