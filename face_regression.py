@@ -11,7 +11,7 @@ SERIALIZE_DATA = True
 
 # Define directories
 face_directory = ['data/utk-face', 'data/utk-face/UTKFace']
-non_face_directory = ['data/nonface/imagenet_images']
+non_face_directory = ['data/nonface']
 
 # Load images and labels from both face and non-face directories
 images, labels = load_data(face_directory, non_face_directory, deserialize_data=DESERIALIZE_DATA,
