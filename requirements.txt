@@ -1,7 +1,8 @@
 matplotlib==3.9.2
 numpy==1.26.4
-scikit_learn==1.5.2
 keras==3.6.0
 opencv-python
+scikit-learn~=1.5.2
+gdown~=5.2.0
 
-tensorflow
+tensorflow~=2.16.1
