@@ -1,6 +1,6 @@
 from utils import load_data
 from sklearn.model_selection import train_test_split
-from models import MultitaskResNet
+from models import MultitaskResNet, MultitaskResNetDropout
 from keras import callbacks
 import csv
 import matplotlib.pyplot as plt
@@ -31,7 +31,7 @@ labels_val_face, labels_val_age, labels_val_gender = labels_val[:, 0], labels_va
 labels_test_face, labels_test_age, labels_test_gender = labels_test[:, 0], labels_test[:, 1], labels_test[:, 2]
 
 # Instantiate and compile the model
-model = MultitaskResNet(input_shape=(128, 128, 3))
+model = MultitaskResNetDropout(input_shape=(128, 128, 3))
 model.build()
 model.summary()
 model.compile_default()
@@ -116,9 +116,9 @@ results = model.evaluate(x=images_test,
 print("Test results:", results)
 
 # Save the trained model
-model.save('saved_models/multitask_resnet_model.keras')
+model.save('saved_models/multitask_resnet_model_dropout_face.keras')
 
-with open('saved_models/training_history.csv', mode='w', newline='') as file:
+with open('saved_models/training_history_dropout_face.csv', mode='w', newline='') as file:
     writer = csv.writer(file)
     # Write header
     writer.writerow(history.history.keys())
