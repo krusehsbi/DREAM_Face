@@ -105,9 +105,11 @@ def download_open_images_v7(no_filter, no_fillup, total_number_images = 24000):
             f.write(response.content)
         print("Metadata downloaded.")
 
+    # Define the data locations
     images_path = Path(__file__).parent / "data/nonface/openimages"
     filter_images_file = Path(__file__).parent / "openimages_filtered_images.txt"
 
+    # Check if we have a store of known images that we can download first
     if os.path.isfile(filter_images_file):
         with open(filter_images_file, "r") as f:
             filtered_image_ids = f.readlines()
@@ -116,10 +118,12 @@ def download_open_images_v7(no_filter, no_fillup, total_number_images = 24000):
         filtered_image_ids = []
 
     sampled_ids = []
-    for filtered_image_id in filtered_image_ids:
-        id_no_nl = filtered_image_id.replace('\n', '')
-        sampled_ids.append(id_no_nl)
-        filtered_files.add(id_no_nl + '.jpg')
+    existing_images = set([x.replace('.jpg', '') for x in os.listdir(images_path)])
+    for filtered_image_id in [x.replace('\n', '') for x in filtered_image_ids]:
+        filtered_files.add(filtered_image_id + '.jpg')
+        if not filtered_image_id in existing_images:
+            sampled_ids.append(filtered_image_id)
+    print(f"{len(existing_images)} images already downloaded, {len(sampled_ids)} new images found in openimages_filtered_images.txt")
 
     print(f"Loading metadata")
     metadata = pd.read_csv(metadata_file)
@@ -138,6 +142,9 @@ def download_open_images_v7(no_filter, no_fillup, total_number_images = 24000):
                 random_state=randrange(0, total_number_images))
             for sample_id in sampled_data['ImageID'].tolist():
                 sampled_ids.append(sample_id)
+
+            for i in range(max(0, len(sampled_ids) - num_need_images)):
+                sampled_ids.pop()
 
             # Write the ids of the files wanted to a download file
             download_images_file = Path(__file__).parent / "data/tmp/openimages_downloads.txt"
@@ -161,7 +168,7 @@ def download_open_images_v7(no_filter, no_fillup, total_number_images = 24000):
         existing_images = os.listdir(images_path)
         num_need_images = total_number_images - len(existing_images)
 
-        if no_fillup or num_need_images == 0:
+        if no_fillup or num_need_images < 0:
             break
         else:
             print(f"Downloading {num_need_images} more images to get to {total_number_images} random images...")
