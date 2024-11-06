@@ -1,10 +1,14 @@
-from keras import applications, layers, models, optimizers, Optimizer
-
+from keras import applications, layers, models, optimizers
 
 class MultitaskResNet(models.Model):
     def __init__(self, input_shape=(128, 128, 3)):
         super(MultitaskResNet, self).__init__()
         self.input_shape = input_shape
+
+        # Data Augmentation Layers
+        self.random_flip = layers.RandomFlip("horizontal")  # Random horizontal flip
+        self.random_rotation = layers.RandomRotation(0.1)    # Random rotation within 10 degrees
+        self.random_zoom = layers.RandomZoom(0.05)            # Random zoom within 10%
 
         # Load the ResNet50 model without the top layer (pretrained on ImageNet)
         self.base_model = applications.ResNet50(include_top=False, input_shape=self.input_shape, weights='imagenet')
@@ -22,8 +26,8 @@ class MultitaskResNet(models.Model):
         self.age_output = layers.Dense(1, activation='linear', name='age_output')
 
         # Task 3: Gender Classification (Binary Classification)
-        self.gender_1 = layers.Dense(64, activation='relu', name='gender_1') # First dense layer
-        self.gender_2 = layers.Dense(32, activation='relu', name='gender_2') # Second dense layer
+        self.gender_1 = layers.Dense(64, activation='relu', name='gender_1')  # First dense layer
+        self.gender_2 = layers.Dense(32, activation='relu', name='gender_2')  # Second dense layer
         self.gender_output = layers.Dense(3, activation='softmax', name='gender_output')
 
     def build(self, *kwargs):
@@ -48,9 +52,14 @@ class MultitaskResNet(models.Model):
         self.built = True
 
     def call(self, inputs):
+        # Apply data augmentation
+        x = self.random_flip(inputs)
+        x = self.random_rotation(x)
+        x = self.random_zoom(x)
+
         # Shared layers (common backbone)
-        x = self.base_model(inputs)
-        x = layers.GlobalAveragePooling2D()(x)
+        x = self.base_model(x)
+        x = self.pooling_1(x)
 
         # Task 1: Face/No-Face Classification (Binary Classification)
         face_out = self.face_output(x)
@@ -68,7 +77,6 @@ class MultitaskResNet(models.Model):
         return {'face_output': face_out, 'age_output': age_out, 'gender_output': gender_out}
 
     def compile_default(self):
-        
         # Compile the model with task-specific losses and metrics
         super().compile(optimizer=optimizers.Adam(),
                            loss={
