@@ -1,4 +1,6 @@
+import argparse
 import shutil
+import platform
 
 import gdown
 import tarfile
@@ -63,43 +65,61 @@ def download_and_extract(file_id, output_folder):
             temp_file.unlink()
 
 def download_imagenet_images():
-    data_dir = Path(__file__).parent / "data"
+    data_dir = Path(__file__).parent / "data" / "nonface"
     data_dir.mkdir(parents=True, exist_ok=True)
 
-    subprocess.run([
-        "python3",
-        "./extern/ImageNet-Datasets-Downloader/downloader.py",
-        "-data_root", str(data_dir / "nonface"),
-        "-number_of_classes", "20",
-        "-images_per_class", "1000",
-    ])
+    script_path = Path(__file__).parent / "extern/ImageNet-Datasets-Downloader/downloader.py"
+    arguments = [f'-data_root', str(data_dir),
+                 '-number_of_classes', '20',
+                 '-images_per_class', '1000']
 
-def main():
+    subprocess.run(['python', str(script_path)] + arguments)
+
+def download_data():
+    parser = argparse.ArgumentParser(
+        prog='Dataset-Downloader',
+        description='Downloads utk-face dataset and imagenet classes for training and testing'
+    )
+    parser.add_argument(
+        '-noutkface',
+        action='store_true',
+        help='Do not download the utk-face dataset'
+    )
+    parser.add_argument(
+        '-noimagenet',
+        action='store_true',
+        help='Do not download the imagenet dataset'
+    )
+    parser.print_help()
+    args = parser.parse_args()
+
     #Download UTK Face
-    # Set up the relative output path (relative to this script)
-    script_dir = Path(__file__).parent
-    utk_output_dir = script_dir / "data" / "utk-face"
+    if not args.noutkface:
+        # Set up the relative output path (relative to this script)
+        script_dir = Path(__file__).parent
+        utk_output_dir = script_dir / "data" / "utk-face"
 
-    if not os.path.exists(utk_output_dir):
-        print("Downloading UTK Face images")
+        if not os.path.exists(utk_output_dir):
+            print("Downloading UTK Face images")
 
-        # List of Google Drive file IDs for UTK Face
-        file_ids = [
-            "1mb5Z24TsnKI3ygNIlX6ZFiwUj0_PmpAW",  # part1
-            "19vdaXVRtkP-nyxz1MYwXiFsh_m_OL72b", # part2
-            "1oj9ZWsLV2-k2idoW_nRSrLQLUP3hus3b" # part3
-        ]
+            # List of Google Drive file IDs for UTK Face
+            file_ids = [
+                "1mb5Z24TsnKI3ygNIlX6ZFiwUj0_PmpAW",  # part1
+                "19vdaXVRtkP-nyxz1MYwXiFsh_m_OL72b", # part2
+                "1oj9ZWsLV2-k2idoW_nRSrLQLUP3hus3b" # part3
+            ]
 
-        # Download and extract each file
-        for file_id in file_ids:
-            download_and_extract(file_id, utk_output_dir)
-            print(f"Processed file ID: {file_id}")
+            # Download and extract each file
+            for file_id in file_ids:
+                download_and_extract(file_id, utk_output_dir)
+                print(f"Processed file ID: {file_id}")
 
-        move_files_to_main(utk_output_dir)
+            move_files_to_main(utk_output_dir)
 
     #Download Imagenet
-    print("Downloading Imagenet images")
-    download_imagenet_images()
+    if not args.noimagenet:
+        print("Downloading Imagenet images")
+        download_imagenet_images()
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    download_data()
