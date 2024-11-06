@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Load the data from the CSV file
-history = pd.read_csv('saved_models/training_history.csv')
+history = pd.read_csv('saved_models/training_history_dropout_face.csv')
 
 # Plot for Age Mean Absolute Error
 plt.plot(history['age_output_mae'], label='Train MAE')
