@@ -1,12 +1,41 @@
 import argparse
 import shutil
-import platform
+from random import random, randrange, sample
 
+import cv2
 import gdown
 import tarfile
 import os
 from pathlib import Path
 import subprocess
+import requests
+import pandas as pd
+from mtcnn import MTCNN
+
+filtered_files = set()
+
+def delete_images_with_faces_mtcnn(directory_path):
+    detector = MTCNN()
+
+    total_files = os.listdir(directory_path)
+    num_total_files = len(total_files)
+    processed_files = 0
+    for filename in total_files:
+        if not filename in filtered_files and filename.endswith((".jpg", ".jpeg", ".png")):
+            filtered_files.add(filename)
+
+            file_path = os.path.join(directory_path, filename)
+            image = cv2.imread(file_path)
+
+            # Detect faces in the image
+            faces = detector.detect_faces(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+
+            processed_files += 1
+            if faces:
+                os.remove(file_path)
+                print(f"{processed_files / num_total_files * 100}% Deleted {filename} as it contains a face.")
+            else:
+                print(f"{processed_files / num_total_files * 100}% No face detected in {filename}. Keeping file.")
 
 def move_files_to_main(directory):
     # Walk through all subdirectories of the specified directory
@@ -64,21 +93,99 @@ def download_and_extract(file_id, output_folder):
         if temp_file.exists():
             temp_file.unlink()
 
-def download_imagenet_images():
-    data_dir = Path(__file__).parent / "data" / "nonface"
+def download_open_images_v7(no_filter, no_fillup, total_number_images = 24000):
+    # Step 1: Download the metadata CSV file
+    metadata_url = "https://storage.googleapis.com/openimages/2018_04/train/train-images-boxable-with-rotation.csv"
+    metadata_file = Path(__file__).parent / "data/tmp/train-images-boxable-with-rotation.csv"
+
+    # Download metadata if it doesn't exist
+    if not os.path.exists(metadata_file):
+        print("Downloading metadata CSV...")
+        response = requests.get(metadata_url)
+        with open(metadata_file, "wb") as f:
+            f.write(response.content)
+        print("Metadata downloaded.")
+
+    images_path = Path(__file__).parent / "data/nonface/openimages"
+    filter_images_file = Path(__file__).parent / "openimages_filtered_images.txt"
+
+    if os.path.isfile(filter_images_file):
+        with open(filter_images_file, "r") as f:
+            filtered_image_ids = f.readlines()
+            print(f'Number of known images: {len(filtered_image_ids)}')
+    else:
+        filtered_image_ids = []
+
+    sampled_ids = []
+    for filtered_image_id in filtered_image_ids:
+        id_no_nl = filtered_image_id.replace('\n', '')
+        sampled_ids.append(id_no_nl)
+        filtered_files.add(id_no_nl + '.jpg')
+
+    print(f"Loading metadata")
+    metadata = pd.read_csv(metadata_file)
+
+    while True:
+        # Step 1: Check how many images are needed
+        os.makedirs(images_path, exist_ok=True)
+        existing_images = os.listdir(images_path)
+        num_need_images = total_number_images - len(existing_images)
+
+        # Step 2: Load the CSV and randomly sample enough images to get to the total number of images
+        if num_need_images > 0:
+            # Load as many entries as we need to fill up our known dataset
+            sampled_data = metadata.sample(
+                n=max(0, num_need_images-len(sampled_ids)),
+                random_state=randrange(0, total_number_images))
+            for sample_id in sampled_data['ImageID'].tolist():
+                sampled_ids.append(sample_id)
+
+            # Write the ids of the files wanted to a download file
+            download_images_file = Path(__file__).parent / "data/tmp/openimages_downloads.txt"
+            with open(download_images_file, "w") as f:
+                for image_id in sampled_ids:
+                    f.write(f"train/{image_id}\n")
+
+            # Step 3: Download images
+            script_path = Path(__file__).parent / "extern/OpenImagesV7/downloader.py"
+            arguments = ['--download_folder', images_path,
+                         '--num_processes', '5',
+                         str(download_images_file)]
+
+            subprocess.run(['python3', str(script_path)] + arguments)
+
+        # Step 4: Filter out the images that contain faces
+        if not no_filter:
+            print("Filtering out the OpenImages7 images with faces")
+            filter_openimages_v7()
+
+        existing_images = os.listdir(images_path)
+        num_need_images = total_number_images - len(existing_images)
+
+        if no_fillup or num_need_images == 0:
+            break
+        else:
+            print(f"Downloading {num_need_images} more images to get to {total_number_images} random images...")
+            sampled_ids = []
+
+    print("Download completed.")
+
+    final_image_ids = [Path(x).stem for x in os.listdir(images_path)]
+    # Write the ids of the filtered files to a file so that we can download without filtering in the future
+    with open(filter_images_file, "w") as f:
+        for image_id in final_image_ids:
+            f.write(f"{image_id}\n")
+
+
+def filter_openimages_v7():
+    data_dir = Path(__file__).parent / "data" / "nonface" / "openimages"
     data_dir.mkdir(parents=True, exist_ok=True)
-
-    script_path = Path(__file__).parent / "extern/ImageNet-Datasets-Downloader/downloader.py"
-    arguments = [f'-data_root', str(data_dir),
-                 '-number_of_classes', '20',
-                 '-images_per_class', '1000']
-
-    subprocess.run(['python', str(script_path)] + arguments)
+    delete_images_with_faces_mtcnn(data_dir)
 
 def download_data():
     parser = argparse.ArgumentParser(
         prog='Dataset-Downloader',
-        description='Downloads utk-face dataset and imagenet classes for training and testing'
+        description='Downloads utk-face dataset and some OpenImagesV7 images for training and testing'
     )
     parser.add_argument(
         '-noutkface',
@@ -86,9 +193,19 @@ def download_data():
         help='Do not download the utk-face dataset'
     )
     parser.add_argument(
-        '-noimagenet',
+        '-noopenimages',
         action='store_true',
-        help='Do not download the imagenet dataset'
+        help='Do not download the OpenImagesV7 dataset'
+    )
+    parser.add_argument(
+        '-noopenimagesfilter',
+        action='store_true',
+        help='Do not filter out the imagenet images with faces'
+    )
+    parser.add_argument(
+        '-nofillup',
+        action="store_true",
+        help='Do not try to fill up the filtered out images with new ones until the desired amount is reached'
     )
     parser.print_help()
     args = parser.parse_args()
@@ -116,10 +233,11 @@ def download_data():
 
             move_files_to_main(utk_output_dir)
 
-    #Download Imagenet
-    if not args.noimagenet:
-        print("Downloading Imagenet images")
-        download_imagenet_images()
+    #Download OpenImage_v8
+    if not args.noopenimages:
+        print("Downloading OpenImagesV7 images")
+        download_open_images_v7(args.noopenimagesfilter, args.nofillup, 24000)
+
 
 if __name__ == '__main__':
     download_data()
