@@ -1,6 +1,12 @@
 matplotlib==3.9.2
 numpy==1.26.4
 keras==3.6.0
-opencv-python
+opencv-python~=4.10.0.84
 scikit-learn~=1.5.2
 gdown~=5.2.0
+mtcnn~=1.0.0
+requests~=2.32.3
+pandas~=2.2.3
+boto3~=1.35.54
+botocore~=1.35.54
+tqdm~=4.66.6
