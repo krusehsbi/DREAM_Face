@@ -9,7 +9,12 @@ from tkinter import *
 def infer_image(image, model):
     plt.imshow(image)
     plt.show()
-    predictions = model.predict(applications.resnet.preprocess_input(ops.expand_dims(image, 0)))
+    predictions = model.predict(
+        applications.resnet.preprocess_input(
+            ops.expand_dims(image, 0)
+        ),
+        batch_size=1
+    )
     print(predictions)
     face_likeliness = float(ops.sigmoid(predictions['face_output'][0]))
     if face_likeliness > 0.5:

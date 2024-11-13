@@ -212,5 +212,5 @@ class DataGenerator(utils.Sequence):
         face_sample_weights = np.ones_like(sample_weights)
         return (
             batch_x,
-            {'face_output': batch_y_face, 'age_output': batch_y_age, 'gender_output': batch_y_gender})
-            #{'face_output': face_sample_weights, 'age_output': sample_weights,'gender_output': sample_weights})
+            {'face_output': batch_y_face, 'age_output': batch_y_age, 'gender_output': batch_y_gender},
+            {'face_output': face_sample_weights, 'age_output': sample_weights,'gender_output': sample_weights})
