@@ -2,7 +2,7 @@ import os
 import pickle
 
 import numpy as np
-from keras import utils
+from keras import utils, applications
 
 def load_image_as_array(directory, filename):
     image = utils.load_img(
@@ -61,7 +61,7 @@ def load_non_face_dir(directory, images, labels, deserialize_data, serialize_dat
 
             image = load_image_as_array(directory, filename)
             images_temp.append(image)
-            labels_temp.append([0, 200, 2])  # Label '0' for non-face images, no age/gender
+            labels_temp.append([0, 0, 0])  # Label '0' for non-face images, no age/gender
 
         if serialize_data:
             serialize_loaded_data(images_temp, labels_temp, "non_face_" + class_name)
@@ -170,6 +170,11 @@ def load_data(
 
     return np.array(images), np.array(labels)
 
+def shuffle_arrays(array1, array2):
+    assert len(array1) == len(array2)
+    permutation = np.random.permutation(len(array1))
+    return array1[permutation], array2[permutation]
+
 class DataGenerator(utils.Sequence):
     def __init__(self, images, labels_face, labels_age, labels_gender, batch_size):
         super(DataGenerator, self).__init__()
@@ -187,4 +192,12 @@ class DataGenerator(utils.Sequence):
         batch_y_face = self.labels_face[idx * self.batch_size:(idx + 1) * self.batch_size]
         batch_y_age = self.labels_age[idx * self.batch_size:(idx + 1) * self.batch_size]
         batch_y_gender = self.labels_gender[idx * self.batch_size:(idx + 1) * self.batch_size]
-        return batch_x, {'face_output': batch_y_face, 'age_output': batch_y_age, 'gender_output': batch_y_gender}
+
+        batch_x = applications.resnet50.preprocess_input(batch_x)
+
+        sample_weights = batch_y_face.astype('float32')
+        face_sample_weights = np.ones_like(sample_weights)
+        return (
+            batch_x,
+            {'face_output': batch_y_face, 'age_output': batch_y_age, 'gender_output': batch_y_gender},
+            {'face_output': face_sample_weights, 'age_output': sample_weights,'gender_output': sample_weights})

@@ -1,10 +1,16 @@
-from utils import load_data
+import os
+from pathlib import Path
+import random
+from random import shuffle
+
+from utils import load_data, shuffle_arrays
 from sklearn.model_selection import train_test_split
 from models import MultitaskResNet, MultitaskResNetDropout
 from keras import callbacks
 import csv
 import matplotlib.pyplot as plt
 from utils import DataGenerator
+import numpy as np
 
 DESERIALIZE_DATA = True
 SERIALIZE_DATA = True
@@ -16,7 +22,7 @@ non_face_directory = ['data/nonface']
 # Load images and labels from both face and non-face directories
 images, labels = load_data(face_directory, non_face_directory, deserialize_data=DESERIALIZE_DATA,
                            serialize_data=SERIALIZE_DATA)
-# image_alt, labels_alt = utils_alt.load_data(face_directory[0], non_face_directory[0])
+#images, labels = shuffle_arrays(images, labels)
 
 # Step 1: Split data into training (80%) and test+validation (20%) sets
 images_train, images_temp, labels_train, labels_temp = train_test_split(images, labels, test_size=0.2, random_state=42)
@@ -39,14 +45,14 @@ model.compile_default()
 # Define early stopping callback
 early_stopping = callbacks.EarlyStopping(
     monitor='val_loss',  # Metric to monitor
-    patience=3,  # Number of epochs with no improvement after which training will be stopped
+    patience=5,  # Number of epochs with no improvement after which training will be stopped
     restore_best_weights=True
     # Whether to restore model weights from the epoch with the best value of the monitored quantity
 )
 
 # Initialize the generator
-train_generator = DataGenerator(images_train, labels_train_face, labels_train_age, labels_train_gender, batch_size=64)
-val_generator = DataGenerator(images_val, labels_val_face, labels_val_age, labels_val_gender, batch_size=64)
+train_generator = DataGenerator(images_train, labels_train_face, labels_train_age, labels_train_gender, batch_size=128)
+val_generator = DataGenerator(images_val, labels_val_face, labels_val_age, labels_val_gender, batch_size=128)
 
 # Train the model using the generator
 history = model.fit(
@@ -111,12 +117,15 @@ results = model.evaluate(x=images_test,
                          y={'face_output': labels_test_face,
                             'age_output': labels_test_age,
                             'gender_output': labels_test_gender},
-                         batch_size=64,
+                         batch_size=256,
                          return_dict=True)
 print("Test results:", results)
 
 # Save the trained model
+(Path(__file__).parent/'saved_models').mkdir(exist_ok=True)
+(Path(__file__).parent/'saved_weights').mkdir( exist_ok=True)
 model.save('saved_models/multitask_resnet_model_dropout_face.keras')
+model.save_weights('saved_weights/multitask_resnet_model_dropout_face.weights.h5')
 
 with open('saved_models/training_history_dropout_face.csv', mode='w', newline='') as file:
     writer = csv.writer(file)
