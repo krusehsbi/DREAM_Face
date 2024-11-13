@@ -5,7 +5,7 @@ from random import shuffle
 
 from utils import load_data, shuffle_arrays
 from sklearn.model_selection import train_test_split
-from models import MultitaskResNet, MultitaskResNetDropout
+from models import MultitaskResNet
 from keras import callbacks
 import csv
 import matplotlib.pyplot as plt
@@ -38,10 +38,8 @@ labels_val_face, labels_val_age, labels_val_gender = labels_val[:, 0], labels_va
 labels_test_face, labels_test_age, labels_test_gender = labels_test[:, 0], labels_test[:, 1], labels_test[:, 2]
 
 # Instantiate and compile the model
-model = MultitaskResNetDropout(input_shape=(128, 128, 3))
-model.build()
+model = MultitaskResNet(input_shape=(128, 128, 3), dropout_rate=0.25)
 model.summary()
-model.compile_default()
 
 # Define early stopping callback
 early_stopping = callbacks.EarlyStopping(
@@ -65,8 +63,8 @@ history = model.fit(
 
 print(history.history.keys())
 
-plt.plot(history.history['age_output_mae'])
-plt.plot(history.history['val_age_output_mae'])
+plt.plot(history.history['age_output_absolute_error'])
+plt.plot(history.history['val_age_output_absolute_error'])
 plt.title('Age Mean Absolute Error')
 plt.ylabel('Error')
 plt.xlabel('Epoch')
@@ -113,6 +111,14 @@ plt.xlabel('Epoch')
 plt.legend(['train', 'val'], loc='upper left')
 plt.show()
 
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('Total Loss')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(['train', 'val'], loc='upper left')
+plt.show()
+
 # Final evaluation on test set
 results = model.evaluate(x=images_test,
                          y={'face_output': labels_test_face,
@@ -128,9 +134,7 @@ for image in test_images:
 
 # Save the trained model
 (Path(__file__).parent/'saved_models').mkdir(exist_ok=True)
-(Path(__file__).parent/'saved_weights').mkdir( exist_ok=True)
 model.save('saved_models/multitask_resnet_model_dropout_face.keras')
-model.save_weights('saved_weights/multitask_resnet_model_dropout_face.weights.h5')
 
 with open('saved_models/training_history_dropout_face.csv', mode='w', newline='') as file:
     writer = csv.writer(file)

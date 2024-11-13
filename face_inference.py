@@ -16,10 +16,10 @@ def infer_image(image, model):
         batch_size=1
     )
     print(predictions)
-    face_likeliness = float(ops.sigmoid(predictions['face_output'][0]))
+    face_likeliness = float(ops.sigmoid(predictions[0][0]))
     if face_likeliness > 0.5:
-        age = float(ops.relu(predictions['age_output']))
-        gender = float(ops.argmax(predictions['gender_output']))
+        age = float(ops.relu(predictions[1]))
+        gender = float(ops.argmax(predictions[2]))
         print(f"The image contains a face with {100 * face_likeliness:.2f}% confidence."
               f"The person is {age} years old."
               f"It has the gender {float(gender)}")
@@ -31,12 +31,8 @@ if __name__ == "__main__":
     DESERIALIZE_DATA = True
     SERIALIZE_DATA = True
 
-    model_weights_to_load = 'multitask_resnet_model_dropout_face.weights.h5'
-    print(f"Loading model weights {model_weights_to_load}")
-    model = MultitaskResNetDropout(input_shape=(128, 128, 3))
-    model.load_weights(f"saved_weights/{model_weights_to_load}")
-    model.compile_default()
-    model.load_weights(f"saved_weights/{model_weights_to_load}")
+    model = saving.load_model('saved_models/multitask_resnet_model_dropout_face.keras')
+    model.summary()
 
     # Define directories
     face_directory = ['data/utk-face', 'data/utk-face/UTKFace']

@@ -1,6 +1,3 @@
-import os
-from email.policy import default
-
 import numpy as np
 from keras import models, layers, applications, metrics, losses, optimizers, callbacks, saving, ops
 
@@ -104,13 +101,13 @@ if __name__ == '__main__':
 
     checkpoint = callbacks.ModelCheckpoint(
         filepath=checkpoint_filepath,
-        monitor='val_Accuracy',
+        monitor='val_face_accuracy',
         mode='max',
         save_best_only=True
     )
 
     early_stopping = callbacks.EarlyStopping(
-        monitor='val_Accuracy',
+        monitor='val_face_accuracy',
         min_delta=0.0001,
         patience=5,
         restore_best_weights=True,
@@ -119,7 +116,7 @@ if __name__ == '__main__':
 
     history = model.fit(x=images_train, y=labels_train_face,
               validation_data=(images_val, labels_val_face),
-              epochs=1,
+              epochs=5,
               batch_size=128,
               callbacks=[
                   checkpoint,
@@ -131,6 +128,14 @@ if __name__ == '__main__':
     print(result)
 
     model.save("saved_models/FaceDetector.keras")
+
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('Total Loss')
+    plt.ylabel('Loss')
+    plt.xlabel('Epoch')
+    plt.legend(['train', 'val'], loc='upper left')
+    plt.show()
 
     model = saving.load_model("saved_models/FaceDetector.keras")
 
