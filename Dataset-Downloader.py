@@ -1,5 +1,6 @@
 import argparse
 import shutil
+import sys
 from random import random, randrange, sample
 
 import cv2
@@ -97,6 +98,8 @@ def download_open_images_v7(no_filter, no_fillup, total_number_images = 24000):
     metadata_url = "https://storage.googleapis.com/openimages/2018_04/train/train-images-boxable-with-rotation.csv"
     metadata_file = Path(__file__).parent / "data/tmp/train-images-boxable-with-rotation.csv"
 
+    (Path(__file__).parent / "data/tmp").mkdir(parents=True, exist_ok=True)
+
     # Download metadata if it doesn't exist
     if not os.path.exists(metadata_file):
         print("Downloading metadata CSV...")
@@ -107,6 +110,7 @@ def download_open_images_v7(no_filter, no_fillup, total_number_images = 24000):
 
     # Define the data locations
     images_path = Path(__file__).parent / "data/nonface/openimages"
+    images_path.mkdir(exist_ok=True, parents=True)
     filter_images_file = Path(__file__).parent / "openimages_filtered_images.txt"
 
     # Check if we have a store of known images that we can download first
@@ -158,7 +162,7 @@ def download_open_images_v7(no_filter, no_fillup, total_number_images = 24000):
                          '--num_processes', '5',
                          str(download_images_file)]
 
-            subprocess.run(['python3', str(script_path)] + arguments)
+            subprocess.run([sys.executable, str(script_path)] + arguments)
 
         # Step 4: Filter out the images that contain faces
         if not no_filter:
@@ -168,7 +172,7 @@ def download_open_images_v7(no_filter, no_fillup, total_number_images = 24000):
         existing_images = os.listdir(images_path)
         num_need_images = total_number_images - len(existing_images)
 
-        if no_fillup or num_need_images < 0:
+        if no_fillup or num_need_images <= 0:
             break
         else:
             print(f"Downloading {num_need_images} more images to get to {total_number_images} random images...")
