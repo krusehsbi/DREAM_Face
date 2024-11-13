@@ -98,6 +98,8 @@ class MultitaskResNetDropout(models.Model):
         self.input_shape = input_shape
         self.dropout_rate = dropout_rate
 
+        self.rescaling = layers.Rescaling(1./255)
+
         # Masking for outputs
         self.masking = layers.Masking(mask_value=500)
 
@@ -111,7 +113,6 @@ class MultitaskResNetDropout(models.Model):
         self.base_model.trainable = False  # Freeze the base model
 
         # Shared layers (common backbone)
-        self.dropout = layers.Dropout(dropout_rate)
         self.pooling_1 = layers.GlobalAveragePooling2D()
 
         # Task 1: Face/No-Face Classification (Binary Classification) with dropout before output
@@ -146,8 +147,6 @@ class MultitaskResNetDropout(models.Model):
         self.base_model.build(x)
         x = self.base_model.output_shape
 
-        self.dropout.build(x)
-        x = self.dropout.compute_output_shape(x)
         self.pooling_1.build(x)
         x = self.pooling_1.compute_output_shape(x)
 
@@ -178,6 +177,8 @@ class MultitaskResNetDropout(models.Model):
         self.built = True
 
     def call(self, inputs):
+        #x = self.rescaling(inputs)
+
         # Apply data augmentation
         x = self.random_flip(inputs)
         x = self.random_rotation(x)
@@ -187,7 +188,6 @@ class MultitaskResNetDropout(models.Model):
         x = self.base_model(x)
 
         x = self.pooling_1(x)
-        x = self.dropout(x)
 
         # Task 1: Face/No-Face Classification with dropout before output
         face_out = self.face_dropout(x)

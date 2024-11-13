@@ -11,6 +11,7 @@ import csv
 import matplotlib.pyplot as plt
 from utils import DataGenerator
 import numpy as np
+from face_inference import infer_image
 
 DESERIALIZE_DATA = True
 SERIALIZE_DATA = True
@@ -22,7 +23,7 @@ non_face_directory = ['data/nonface']
 # Load images and labels from both face and non-face directories
 images, labels = load_data(face_directory, non_face_directory, deserialize_data=DESERIALIZE_DATA,
                            serialize_data=SERIALIZE_DATA)
-#images, labels = shuffle_arrays(images, labels)
+images, labels = shuffle_arrays(images, labels)
 
 # Step 1: Split data into training (80%) and test+validation (20%) sets
 images_train, images_temp, labels_train, labels_temp = train_test_split(images, labels, test_size=0.2, random_state=42)
@@ -58,7 +59,7 @@ val_generator = DataGenerator(images_val, labels_val_face, labels_val_age, label
 history = model.fit(
     train_generator,
     validation_data=val_generator,
-    epochs=500,
+    epochs=10,
     callbacks=[early_stopping]
 )
 
@@ -120,6 +121,10 @@ results = model.evaluate(x=images_test,
                          batch_size=256,
                          return_dict=True)
 print("Test results:", results)
+
+test_images = images[np.random.choice(images.shape[0], 8, replace=False)]
+for image in test_images:
+    infer_image(image, model)
 
 # Save the trained model
 (Path(__file__).parent/'saved_models').mkdir(exist_ok=True)
