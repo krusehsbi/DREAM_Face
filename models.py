@@ -1,7 +1,5 @@
 from keras import applications, layers, models, optimizers, saving
 
-from Loss import *
-
 
 class MultitaskResNet(models.Model):
     def __init__(self, input_shape=(128, 128, 3)):
@@ -10,8 +8,8 @@ class MultitaskResNet(models.Model):
 
         # Data Augmentation Layers
         self.random_flip = layers.RandomFlip("horizontal")  # Random horizontal flip
-        self.random_rotation = layers.RandomRotation(0.1)    # Random rotation within 10 degrees
-        self.random_zoom = layers.RandomZoom(0.05)            # Random zoom within 10%
+        self.random_rotation = layers.RandomRotation(0.1)  # Random rotation within 10 degrees
+        self.random_zoom = layers.RandomZoom(0.05)  # Random zoom within 10%
 
         # Load the ResNet50 model without the top layer (pretrained on ImageNet)
         self.base_model = applications.ResNet50(include_top=False, input_shape=self.input_shape, weights='imagenet')
@@ -82,16 +80,17 @@ class MultitaskResNet(models.Model):
     def compile_default(self):
         # Compile the model with task-specific losses and metrics
         super().compile(optimizer=optimizers.Adam(),
-                           loss={
-                               'face_output': 'binary_crossentropy',
-                               'age_output': masked_mean_squared_error,
-                               'gender_output': masked_sparse_categorical_crossentropy
-                           },
-                           metrics={
-                               'face_output': 'accuracy',
-                               'age_output': 'mae',
-                               'gender_output': 'accuracy'
-                           })
+                        loss={
+                            'face_output': 'binary_crossentropy',
+                            'age_output': "mean_squared_error",
+                            'gender_output': "sparse_categorical_crossentropy",
+                        },
+                        metrics={
+                            'face_output': 'accuracy',
+                            'age_output': 'mae',
+                            'gender_output': 'accuracy'
+                        })
+
 
 class MultitaskResNetDropout(models.Model):
     def __init__(self, input_shape=(128, 128, 3), dropout_rate=0.3):
@@ -152,7 +151,6 @@ class MultitaskResNetDropout(models.Model):
         self.pooling_1.build(x)
         x = self.pooling_1.compute_output_shape(x)
 
-
         # Face
         self.face_dropout.build(x)
         face_shape = self.face_dropout.compute_output_shape(x)
@@ -201,7 +199,7 @@ class MultitaskResNetDropout(models.Model):
         age_out = self.age_2(age_out)
         age_out = self.age_2_norm(age_out)
         age_out = self.age_output(age_out)
-        #age_out = self.masking(age_out)
+        # age_out = self.masking(age_out)
 
         # Task 3: Gender Classification with dropout before output
         gender_out = self.gender_1(x)
@@ -210,7 +208,7 @@ class MultitaskResNetDropout(models.Model):
         gender_out = self.gender_2_norm(gender_out)
         gender_out = self.gender_dropout(gender_out)
         gender_out = self.gender_output(gender_out)
-        #gender_out = self.masking(gender_out)
+        # gender_out = self.masking(gender_out)
 
         return {'face_output': face_out, 'age_output': age_out, 'gender_output': gender_out}
 
