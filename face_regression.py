@@ -22,7 +22,7 @@ non_face_directory = ['data/nonface']
 
 # Load images and labels from both face and non-face directories
 images, labels = load_data(face_directory, non_face_directory, deserialize_data=DESERIALIZE_DATA,
-                           serialize_data=SERIALIZE_DATA)
+                           serialize_data=SERIALIZE_DATA, preprocess_fnc=None)
 images, labels = shuffle_arrays(images, labels)
 
 # Step 1: Split data into training (80%) and test+validation (20%) sets

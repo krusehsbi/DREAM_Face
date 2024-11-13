@@ -62,7 +62,7 @@ def load_non_face_dir(directory, images, labels, deserialize_data, serialize_dat
 
             image = load_image_as_array(directory, filename)
             images_temp.append(image)
-            labels_temp.append([0, 0, 0])  # Label '0' for non-face images, no age/gender
+            labels_temp.append([0, 200, 2])  # Label '0' for non-face images, no age/gender
 
         if serialize_data:
             serialize_loaded_data(images_temp, labels_temp, "non_face_" + class_name)
@@ -75,7 +75,8 @@ def load_face_data(
         images,
         labels,
         deserialize_data,
-        serialize_data):
+        serialize_data
+):
     if deserialize_data:
         images_temp, labels_temp = deserialize_saved_data("face")
     else:
@@ -148,8 +149,10 @@ def deserialize_saved_data(name):
 def load_data(
         face_directories,
         non_face_directories,
+        preprocess_fnc,
         deserialize_data = True,
-        serialize_data = True):
+        serialize_data = True,
+):
     images = []
     labels = []
 
@@ -169,7 +172,11 @@ def load_data(
 
         load_non_face_data(non_face_directory, images, labels, deserialize_data, serialize_data)
 
-    return np.array(images), np.array(labels)
+    images, labels = np.array(images), np.array(labels)
+    if preprocess_fnc is not None:
+        images = preprocess_fnc(images)
+
+    return images, labels
 
 def shuffle_arrays(array1, array2):
     assert len(array1) == len(array2)
@@ -193,12 +200,6 @@ class DataGenerator(utils.Sequence):
     def __len__(self):
         return int(np.ceil(len(self.images) / self.batch_size))
 
-    def on_epoch_end(self):
-        # Updates indexes after each epoch
-        self.indices = np.arange(self.datalen)
-        if self.shuffle:
-            np.random.shuffle(self.indices)
-
     def __getitem__(self, idx):
         batch_indices = self.indices[idx * self.batch_size:(idx + 1)*self.batch_size]
         batch_x = self.images[batch_indices]
@@ -212,5 +213,5 @@ class DataGenerator(utils.Sequence):
         face_sample_weights = np.ones_like(sample_weights)
         return (
             batch_x,
-            {'face_output': batch_y_face, 'age_output': batch_y_age, 'gender_output': batch_y_gender},
-            {'face_output': face_sample_weights, 'age_output': sample_weights,'gender_output': sample_weights})
+            {'face_output': batch_y_face, 'age_output': batch_y_age, 'gender_output': batch_y_gender})
+            #{'face_output': face_sample_weights, 'age_output': sample_weights,'gender_output': sample_weights})
