@@ -1,3 +1,5 @@
+from random import randrange
+
 from utils import load_data
 from sklearn.model_selection import train_test_split
 from models import MultitaskResNet, MultitaskResNetDropout
@@ -19,11 +21,12 @@ images, labels = load_data(face_directory, non_face_directory, deserialize_data=
 # image_alt, labels_alt = utils_alt.load_data(face_directory[0], non_face_directory[0])
 
 # Step 1: Split data into training (80%) and test+validation (20%) sets
-images_train, images_temp, labels_train, labels_temp = train_test_split(images, labels, test_size=0.2, random_state=42)
+images_train, images_temp, labels_train, labels_temp = train_test_split(images, labels, test_size=0.2,
+                                                                        random_state=randrange(0, 50000))
 
 # Step 2: Split the remaining 20% data into validation (10%) and test (10%) sets
 images_val, images_test, labels_val, labels_test = train_test_split(images_temp, labels_temp, test_size=0.5,
-                                                                    random_state=42)
+                                                                    random_state=randrange(0, 50000))
 
 # Separate the labels for each task (face/no face, age, gender)
 labels_train_face, labels_train_age, labels_train_gender = labels_train[:, 0], labels_train[:, 1], labels_train[:, 2]
