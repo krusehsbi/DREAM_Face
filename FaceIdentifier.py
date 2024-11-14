@@ -8,19 +8,29 @@ import csv
 import keras
 
 @keras.saving.register_keras_serializable()
-def age_loos(y_true, y_pred):
-    return losses.mean_absolute_error(y_true, y_pred) * ops.cast(ops.less(y_true, 200), "float32")
+def age_loos_fn(y_true, y_pred):
+    y_pred = y_pred * ops.cast(ops.less(y_true, 200), "float32")
+    y_true = y_true * ops.cast(ops.less(y_true, 200), "float32")
+    return losses.mean_absolute_error(y_true, y_pred)
 
 @keras.saving.register_keras_serializable()
-def gender_loss(y_true, y_pred):
-    return losses.sparse_categorical_crossentropy(y_true, y_pred, from_logits=True) * ops.cast(ops.less(y_true, 2), "float32")
+def age_metric(y_true, y_pred):
+    y_pred = y_pred * ops.cast(ops.less(y_true, 200), "float32")
+    y_true = y_true * ops.cast(ops.less(y_true, 200), "int32")
+    return metrics.mean_absolute_error(y_true, y_pred)
 
 @keras.saving.register_keras_serializable()
-def exp_learning_rate_scheduler(epoch, lr):
-    if epoch < 3:
-        return float(lr)
-    else:
-        return float(lr * ops.exp(-0.1))
+def gender_loss_fn(y_true, y_pred):
+    y_pred = y_pred * ops.cast(ops.less(y_true, 2), "float32")
+    y_true = y_true * ops.cast(ops.less(y_true, 2), "float32")
+    return losses.binary_crossentropy(y_true, y_pred, from_logits=True)
+
+@keras.saving.register_keras_serializable()
+def gender_metric(y_true, y_pred):
+    y_pred = y_pred * ops.cast(ops.less(y_true, 2), "float32")
+    y_true = y_true * ops.cast(ops.less(y_true, 2), "int32")
+    return metrics.binary_accuracy(y_true, y_pred)
+
 
 def MultitaskResNet(input_shape=(128, 128, 3), dropout_rate=0.25):
     inputs = layers.Input(shape=input_shape)
@@ -45,7 +55,7 @@ def MultitaskResNet(input_shape=(128, 128, 3), dropout_rate=0.25):
     gender_output = layers.Dense(256, activation='relu', name='gender_1')(x)
     gender_output = layers.BatchNormalization(name='gender_normalization')(gender_output)
     gender_output = layers.Dropout(rate=dropout_rate, name='gender_dropout')(gender_output)
-    gender_output = layers.Dense(3, activation=None, name='gender_output')(gender_output)
+    gender_output = layers.Dense(1, activation=None, name='gender_output')(gender_output)
 
     model = models.Model(inputs=inputs, outputs={'face_output' : face_output,
                                                  'age_output' : age_output,
@@ -55,13 +65,13 @@ def MultitaskResNet(input_shape=(128, 128, 3), dropout_rate=0.25):
         optimizer=optimizers.Adam(learning_rate=0.0001),
         loss={
             'face_output': losses.BinaryCrossentropy(from_logits=True),
-            'age_output': age_loos,
-            'gender_output': gender_loss,
+            'age_output': age_loos_fn,
+            'gender_output': gender_loss_fn,
         },
         metrics={
             'face_output': metrics.BinaryAccuracy(name='accuracy'),
-            'age_output': metrics.MeanAbsoluteError(),
-            'gender_output': metrics.SparseCategoricalAccuracy(name='accuracy'),
+            'age_output': age_metric,
+            'gender_output': gender_metric,
         })
 
     utils.plot_model(model)
@@ -119,8 +129,8 @@ if __name__ == '__main__':
     labels_val_face, labels_val_age, labels_val_gender = labels_val[:, 0], labels_val[:, 1], labels_val[:, 2]
     labels_test_face, labels_test_age, labels_test_gender = labels_test[:, 0], labels_test[:, 1], labels_test[:, 2]
 
-    #model = saving.load_model("saved_models/Face.keras")
-    #infer_images(images[np.random.choice(images.shape[0], 8, replace=False)], model)
+    model = saving.load_model("saved_models/Face.keras")
+    infer_images(images[np.random.choice(images.shape[0], 8, replace=False)], model)
 
     checkpoint_filepath = '/tmp/checkpoints/checkpoint.face.keras'
 
@@ -132,19 +142,17 @@ if __name__ == '__main__':
     checkpoint = callbacks.ModelCheckpoint(
         filepath=checkpoint_filepath,
         monitor='val_loss',
-        mode='min',
+        mode='max',
         save_best_only=True
     )
 
     early_stopping = callbacks.EarlyStopping(
         monitor='val_loss',
-        min_delta=0.001,
+        min_delta=0.0001,
         patience=5,
         restore_best_weights=True,
-        mode="min"
+        mode="max"
     )
-
-    scheduler = callbacks.LearningRateScheduler(exp_learning_rate_scheduler)
 
     history = model.fit(x=images_train,
                         y={'face_output': labels_train_face,
@@ -154,12 +162,11 @@ if __name__ == '__main__':
                                          {'face_output': labels_val_face,
                                           'age_output': labels_val_age,
                                           'gender_output': labels_val_gender}),
-                        epochs=100,
-                        batch_size=32,
+                        epochs=5,
+                        batch_size=128,
                         callbacks=[
                             checkpoint,
-                            early_stopping,
-                            scheduler
+                            early_stopping
                         ])
     print(history)
 
