@@ -34,7 +34,7 @@ def gender_metric(y_true, y_pred):
     return metrics.binary_accuracy(y_true, y_pred)
 
 
-def MultitaskResNet(input_shape=(128, 128, 3), dropout_rate=0.25):
+def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
     inputs = layers.Input(shape=input_shape)
     x = preprocessing_pipeline(inputs)
 
@@ -140,7 +140,7 @@ if __name__ == '__main__':
 
     checkpoint_filepath = '/tmp/checkpoints/checkpoint.face.keras'
 
-    model = MultitaskResNet((128, 128, 3), 0.25)
+    model = FaceIdentifier((128, 128, 3), 0.25)
     model.summary()
     # if os.path.exists(checkpoint_filepath):
     # model.load_weights(checkpoint_filepath)
@@ -177,8 +177,8 @@ if __name__ == '__main__':
                                          {'face_output': labels_val_face,
                                           'age_output': labels_val_age,
                                           'gender_output': labels_val_gender}),
-                        epochs=1,
-                        batch_size=128,
+                        epochs=10,
+                        batch_size=32,
                         callbacks=[
                             checkpoint,
                             early_stopping,
@@ -201,7 +201,7 @@ if __name__ == '__main__':
                              y={'face_output': labels_test_face,
                                 'age_output': labels_test_age,
                                 'gender_output': labels_test_gender},
-                             batch_size=256,
+                             batch_size=32,
                              return_dict=True)
     print(results)
 

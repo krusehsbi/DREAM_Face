@@ -49,7 +49,7 @@ def preprocessing_pipeline(inputs):
     x = RandomGrayscale(probability=0.5)(x)
     return applications.resnet.preprocess_input(x)
 
-def get_face_detector_model(input_shape):
+def FaceDetector(input_shape):
     inputs = layers.Input(shape=input_shape)
     x = preprocessing_pipeline(inputs)
 
@@ -118,7 +118,7 @@ if __name__ == '__main__':
 
     checkpoint_filepath = '/tmp/checkpoints/checkpoint.faceDetector.keras'
 
-    model = get_face_detector_model((128, 128, 3))
+    model = FaceDetector((128, 128, 3))
     #if os.path.exists(checkpoint_filepath):
         #model.load_weights(checkpoint_filepath)
 
