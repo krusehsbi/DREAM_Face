@@ -1,13 +1,15 @@
 import os
 
 import numpy as np
-from keras import models, layers, applications, metrics, losses, optimizers, callbacks, saving, ops, utils, backend
+import wandb
+from keras import models, layers, applications, metrics, losses, optimizers, callbacks, saving, ops, utils, backend, random
 from utils import load_data, shuffle_arrays
 import matplotlib.pyplot as plt
 from sklearn import model_selection
 from FaceDetector import preprocessing_pipeline
 import csv
 import keras
+from wandb.integration.keras import WandbMetricsLogger
 
 @keras.saving.register_keras_serializable()
 def age_loos_fn(y_true, y_pred):
@@ -50,30 +52,32 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
     face_output = layers.Dense(1, activation=None, name='face_output')(face_output)
 
     age_output = layers.Dense(256, activation='relu', name='age_1')(x)
-    #age_output = layers.BatchNormalization(name='age_normalization')(age_output)
     age_output = layers.Dropout(rate=dropout_rate, name='age_dropout')(age_output)
     age_output = layers.Dense(1, activation='relu', name='age_output')(age_output)
 
     gender_output = layers.Dense(256, activation='relu', name='gender_1')(x)
-    gender_output = layers.BatchNormalization(name='gender_normalization')(gender_output)
-    gender_output = layers.Dropout(rate=dropout_rate, name='gender_dropout')(gender_output)
-    gender_output = layers.Dense(1, activation=None, name='gender_output')(gender_output)
+    #gender_output = layers.BatchNormalization()(gender_output)
+    gender_output = layers.Dense(128, activation='relu', name='gender_2')(gender_output)
+    #gender_output = layers.BatchNormalization(name='gender_normalization')(gender_output)
+    gender_output = layers.Dropout(rate=dropout_rate, name='gender_dropout')(x)
+    gender_output = layers.Dense(3, activation=None, name='gender_output')(x)
 
     model = models.Model(inputs=inputs, outputs={'face_output' : face_output,
                                                  'age_output' : age_output,
                                                  'gender_output' : gender_output})
 
     model.compile(
+        run_eagerly=False,
         optimizer=optimizers.Adam(learning_rate=0.0001),
         loss={
             'face_output': losses.BinaryCrossentropy(from_logits=True),
             'age_output': age_loos_fn,
-            'gender_output': gender_loss_fn,
+            'gender_output': losses.SparseCategoricalCrossentropy(from_logits=True),
         },
         metrics={
             'face_output': metrics.BinaryAccuracy(name='accuracy'),
             'age_output': age_metric,
-            'gender_output': gender_metric,
+            'gender_output': metrics.SparseCategoricalAccuracy(name='accuracy'),
         })
 
     utils.plot_model(model)
@@ -145,6 +149,8 @@ if __name__ == '__main__':
     # if os.path.exists(checkpoint_filepath):
     # model.load_weights(checkpoint_filepath)
 
+    wandb.init(config={'bs': 12})
+
     checkpoint = callbacks.ModelCheckpoint(
         filepath=checkpoint_filepath,
         monitor='val_loss',
@@ -182,7 +188,8 @@ if __name__ == '__main__':
                         callbacks=[
                             checkpoint,
                             early_stopping,
-                            learning_rate_scheduler
+                            learning_rate_scheduler,
+                            WandbMetricsLogger()
                         ])
     print(history)
 
@@ -215,8 +222,8 @@ if __name__ == '__main__':
         # Write data
         writer.writerows(zip(*history.history.values()))
 
-    plt.plot(history.history['age_output_metric'])
-    plt.plot(history.history['val_age_output_metric'])
+    plt.plot(history.history['age_output_age_metric'])
+    plt.plot(history.history['val_age_output_age_metric'])
     plt.title('Age Mean Absolute Error')
     plt.ylabel('Error')
     plt.xlabel('Epoch')
@@ -247,8 +254,8 @@ if __name__ == '__main__':
     plt.legend(['train', 'val'], loc='upper left')
     plt.show()
 
-    plt.plot(history.history['gender_output_gender_metric'])
-    plt.plot(history.history['val_gender_output_gender_metric'])
+    plt.plot(history.history['gender_output_accuracy'])
+    plt.plot(history.history['val_gender_output_accuracy'])
     plt.title('Gender Accuracy')
     plt.ylabel('Accuracy')
     plt.xlabel('Epoch')
