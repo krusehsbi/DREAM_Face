@@ -177,7 +177,7 @@ if __name__ == '__main__':
                                          {'face_output': labels_val_face,
                                           'age_output': labels_val_age,
                                           'gender_output': labels_val_gender}),
-                        epochs=5,
+                        epochs=1,
                         batch_size=128,
                         callbacks=[
                             checkpoint,
@@ -215,8 +215,8 @@ if __name__ == '__main__':
         # Write data
         writer.writerows(zip(*history.history.values()))
 
-    plt.plot(history.history['age_output_absolute_error'])
-    plt.plot(history.history['val_age_output_absolute_error'])
+    plt.plot(history.history['age_output_metric'])
+    plt.plot(history.history['val_age_output_metric'])
     plt.title('Age Mean Absolute Error')
     plt.ylabel('Error')
     plt.xlabel('Epoch')
@@ -247,8 +247,8 @@ if __name__ == '__main__':
     plt.legend(['train', 'val'], loc='upper left')
     plt.show()
 
-    plt.plot(history.history['gender_output_accuracy'])
-    plt.plot(history.history['val_gender_output_accuracy'])
+    plt.plot(history.history['gender_output_gender_metric'])
+    plt.plot(history.history['val_gender_output_gender_metric'])
     plt.title('Gender Accuracy')
     plt.ylabel('Accuracy')
     plt.xlabel('Epoch')
