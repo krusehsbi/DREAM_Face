@@ -50,7 +50,6 @@ def MultitaskResNet(input_shape=(128, 128, 3), dropout_rate=0.25):
     face_output = layers.Dense(1, activation=None, name='face_output')(face_output)
 
     age_output = layers.Dense(256, activation='relu', name='age_1')(x)
-    #age_output = layers.BatchNormalization(name='age_normalization')(age_output)
     age_output = layers.Dropout(rate=dropout_rate, name='age_dropout')(age_output)
     age_output = layers.Dense(1, activation='relu', name='age_output')(age_output)
 
