@@ -1,5 +1,7 @@
+import os
+
 import numpy as np
-from keras import models, layers, applications, metrics, losses, optimizers, callbacks, saving, ops, utils
+from keras import models, layers, applications, metrics, losses, optimizers, callbacks, saving, ops, utils, backend
 from utils import load_data, shuffle_arrays
 import matplotlib.pyplot as plt
 from sklearn import model_selection
@@ -9,26 +11,26 @@ import keras
 
 @keras.saving.register_keras_serializable()
 def age_loos_fn(y_true, y_pred):
-    y_pred = y_pred * ops.cast(ops.less(y_true, 200), "float32")
-    y_true = y_true * ops.cast(ops.less(y_true, 200), "float32")
+    y_pred = y_pred * ops.cast(ops.less(y_true, 200), y_pred.dtype)
+    y_true = y_true * ops.cast(ops.less(y_true, 200), y_true.dtype)
     return losses.mean_absolute_error(y_true, y_pred)
 
 @keras.saving.register_keras_serializable()
 def age_metric(y_true, y_pred):
-    y_pred = y_pred * ops.cast(ops.less(y_true, 200), "float32")
-    y_true = y_true * ops.cast(ops.less(y_true, 200), "int32")
+    y_pred = y_pred * ops.cast(ops.less(y_true, 200), y_pred.dtype)
+    y_true = y_true * ops.cast(ops.less(y_true, 200), y_true.dtype)
     return metrics.mean_absolute_error(y_true, y_pred)
 
 @keras.saving.register_keras_serializable()
 def gender_loss_fn(y_true, y_pred):
-    y_pred = y_pred * ops.cast(ops.less(y_true, 2), "float32")
-    y_true = y_true * ops.cast(ops.less(y_true, 2), "float32")
+    y_pred = y_pred * ops.cast(ops.less(y_true, 2), y_pred.dtype)
+    y_true = y_true * ops.cast(ops.less(y_true, 2), y_true.dtype)
     return losses.binary_crossentropy(y_true, y_pred, from_logits=True)
 
 @keras.saving.register_keras_serializable()
 def gender_metric(y_true, y_pred):
-    y_pred = y_pred * ops.cast(ops.less(y_true, 2), "float32")
-    y_true = y_true * ops.cast(ops.less(y_true, 2), "int32")
+    y_pred = y_pred * ops.cast(ops.less(y_true, 2), y_pred.dtype)
+    y_true = y_true * ops.cast(ops.less(y_true, 2), y_true.dtype)
     return metrics.binary_accuracy(y_true, y_pred)
 
 
@@ -129,8 +131,12 @@ if __name__ == '__main__':
     labels_val_face, labels_val_age, labels_val_gender = labels_val[:, 0], labels_val[:, 1], labels_val[:, 2]
     labels_test_face, labels_test_age, labels_test_gender = labels_test[:, 0], labels_test[:, 1], labels_test[:, 2]
 
-    model = saving.load_model("saved_models/Face.keras")
-    infer_images(images[np.random.choice(images.shape[0], 8, replace=False)], model)
+    if os.path.exists("saved_models/Face.keras"):
+        try:
+            model = saving.load_model("saved_models/Face.keras")
+            infer_images(images[np.random.choice(images.shape[0], 8, replace=False)], model)
+        except Exception as e:
+            print(e)
 
     checkpoint_filepath = '/tmp/checkpoints/checkpoint.face.keras'
 
@@ -142,7 +148,7 @@ if __name__ == '__main__':
     checkpoint = callbacks.ModelCheckpoint(
         filepath=checkpoint_filepath,
         monitor='val_loss',
-        mode='max',
+        mode='min',
         save_best_only=True
     )
 
@@ -151,8 +157,17 @@ if __name__ == '__main__':
         min_delta=0.0001,
         patience=5,
         restore_best_weights=True,
-        mode="max"
+        mode="min"
     )
+
+
+    def scheduler(epoch, lr):
+        if epoch < 2:
+            return float(lr)
+        else:
+            return float(lr * ops.exp(-0.1))
+
+    learning_rate_scheduler = callbacks.LearningRateScheduler(scheduler)
 
     history = model.fit(x=images_train,
                         y={'face_output': labels_train_face,
@@ -166,7 +181,8 @@ if __name__ == '__main__':
                         batch_size=128,
                         callbacks=[
                             checkpoint,
-                            early_stopping
+                            early_stopping,
+                            learning_rate_scheduler
                         ])
     print(history)
 
