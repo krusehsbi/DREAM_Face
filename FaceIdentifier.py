@@ -23,10 +23,9 @@ def MultitaskResNet(input_shape=(128, 128, 3), dropout_rate=0.25):
     face_output = layers.Dense(1, activation=None, name='face_output')(face_output)
 
     age_output = layers.Dense(256, activation='relu', name='age_1')(x)
-    age_output = layers.Dense(128, activation='relu', name='age_2')(age_output)
     age_output = layers.BatchNormalization(name='age_normalization')(age_output)
     age_output = layers.Dropout(rate=dropout_rate, name='age_dropout')(age_output)
-    age_output = layers.Dense(1, activation='linear', name='age_output')(age_output)
+    age_output = layers.Dense(1, activation='relu', name='age_output')(age_output)
 
     gender_output = layers.Dense(256, activation='relu', name='gender_1')(x)
     gender_output = layers.Dense(128, activation='relu', name='gender_2')(gender_output)
@@ -39,7 +38,7 @@ def MultitaskResNet(input_shape=(128, 128, 3), dropout_rate=0.25):
                                                  'gender_output' : gender_output})
 
     model.compile(
-        optimizer=optimizers.Adam(learning_rate=3e-4),
+        optimizer=optimizers.Adam(learning_rate=0.001),
         loss={
             'face_output': losses.BinaryCrossentropy(from_logits=True),
             'age_output': losses.MeanAbsoluteError(),
