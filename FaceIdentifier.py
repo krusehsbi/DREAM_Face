@@ -6,6 +6,11 @@ from sklearn import model_selection
 from FaceDetector import preprocessing_pipeline
 import csv
 
+def age_loos_fn(y_true, y_pred):
+    return losses.mean_absolute_error(y_true, y_pred)
+
+def gender_loss_fn(y_true, y_pred):
+    return losses.sparse_categorical_crossentropy(y_true, y_pred, from_logits=True)
 
 def MultitaskResNet(input_shape=(128, 128, 3), dropout_rate=0.25):
     inputs = layers.Input(shape=input_shape)
@@ -41,8 +46,8 @@ def MultitaskResNet(input_shape=(128, 128, 3), dropout_rate=0.25):
         optimizer=optimizers.Adam(learning_rate=0.001),
         loss={
             'face_output': losses.BinaryCrossentropy(from_logits=True),
-            'age_output': losses.MeanAbsoluteError(),
-            'gender_output': losses.SparseCategoricalCrossentropy(from_logits=True),
+            'age_output': age_loos_fn,
+            'gender_output': gender_loss_fn,
         },
         metrics={
             'face_output': metrics.BinaryAccuracy(name='accuracy'),
