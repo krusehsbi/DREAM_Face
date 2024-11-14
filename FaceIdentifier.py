@@ -42,13 +42,13 @@ def MultitaskResNet(input_shape=(128, 128, 3), dropout_rate=0.25):
         optimizer=optimizers.Adam(learning_rate=3e-4),
         loss={
             'face_output': losses.BinaryCrossentropy(from_logits=True),
-            'age_output': losses.MeanSquaredError(),
+            'age_output': losses.MeanAbsoluteError(),
             'gender_output': losses.SparseCategoricalCrossentropy(from_logits=True),
         },
         metrics={
             'face_output': metrics.BinaryAccuracy(name='accuracy'),
-            'age_output': metrics.MeanSquaredError(name='absolute_error'),
-            'gender_output': metrics.CategoricalAccuracy(name='accuracy'),
+            'age_output': metrics.MeanAbsoluteError(name='absolute_error'),
+            'gender_output': metrics.SparseCategoricalAccuracy(name='accuracy'),
         })
 
     return model
@@ -62,9 +62,15 @@ def infer_images(images, model=None):
 
 def infer_image(image, model):
     predictions = model.predict(ops.expand_dims(image, 0))
-    score = float(ops.sigmoid(predictions['face_output'][0]))
+    score_face = float(ops.sigmoid(predictions['face_output'][0]))
+    score_age = float(ops.mean(predictions['age_output'][0]))
+    score_gender = float(ops.argmax(predictions['gender_output'][0]))
 
-    print(f"This image contains a face with {100 * score:.2f}% certainty.")
+    print(f"This image contains a face with {100 * score_face:.2f}% certainty.")
+
+    if score_face > 0.5:
+        print(f"The person has gender {"male" if score_gender == 0 else "female" } and is {score_age} years old.")
+
 
     plt.imshow(image)
     plt.show()
@@ -98,6 +104,9 @@ if __name__ == '__main__':
         labels_train[:, 2])
     labels_val_face, labels_val_age, labels_val_gender = labels_val[:, 0], labels_val[:, 1], labels_val[:, 2]
     labels_test_face, labels_test_age, labels_test_gender = labels_test[:, 0], labels_test[:, 1], labels_test[:, 2]
+
+    model = saving.load_model("saved_models/Face.keras")
+    infer_images(images[np.random.choice(images.shape[0], 8, replace=False)], model)
 
     checkpoint_filepath = '/tmp/checkpoints/checkpoint.face.keras'
 
@@ -146,6 +155,25 @@ if __name__ == '__main__':
     print(result)
 
     model.save("saved_models/Face.keras")
+
+    # Final evaluation on test set
+    results = model.evaluate(x=images_test,
+                             y={'face_output': labels_test_face,
+                                'age_output': labels_test_age,
+                                'gender_output': labels_test_gender},
+                             batch_size=256,
+                             return_dict=True)
+    print(results)
+
+    model = saving.load_model("saved_models/Face.keras")
+    infer_images(images[np.random.choice(images.shape[0], 8, replace=False)], model)
+
+    with open('saved_models/training_history_dropout_face.csv', mode='w', newline='') as file:
+        writer = csv.writer(file)
+        # Write header
+        writer.writerow(history.history.keys())
+        # Write data
+        writer.writerows(zip(*history.history.values()))
 
     plt.plot(history.history['age_output_absolute_error'])
     plt.plot(history.history['val_age_output_absolute_error'])
@@ -202,22 +230,3 @@ if __name__ == '__main__':
     plt.xlabel('Epoch')
     plt.legend(['train', 'val'], loc='upper left')
     plt.show()
-
-    # Final evaluation on test set
-    results = model.evaluate(x=images_test,
-                             y={'face_output': labels_test_face,
-                                'age_output': labels_test_age,
-                                'gender_output': labels_test_gender},
-                             batch_size=256,
-                             return_dict=True)
-    print(results)
-
-    model = saving.load_model("saved_models/Face.keras")
-    infer_images(images[np.random.choice(images.shape[0], 8, replace=False)], model)
-
-    with open('saved_models/training_history_dropout_face.csv', mode='w', newline='') as file:
-        writer = csv.writer(file)
-        # Write header
-        writer.writerow(history.history.keys())
-        # Write data
-        writer.writerows(zip(*history.history.values()))
