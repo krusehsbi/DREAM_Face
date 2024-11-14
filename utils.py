@@ -2,7 +2,6 @@ import os
 import pickle
 
 import numpy as np
-from click.core import batch
 from keras import utils, applications
 
 def load_image_as_array(directory, filename):
