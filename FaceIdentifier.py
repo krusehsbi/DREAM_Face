@@ -93,7 +93,7 @@ def infer_image(image, model):
     plt.show()
 
     predictions = model.predict(ops.expand_dims(image, 0))
-    score_face = float(ops.sigmoid(predictions['face_output'][0]))
+    score_face = float(predictions['face_output'][0])
     score_age = round(predictions['age_output'][0][0])
     score_gender = float(ops.argmax(predictions['gender_output'][0]))
 
