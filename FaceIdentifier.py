@@ -39,9 +39,11 @@ def gender_metric(y_true, y_pred):
 def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
     inputs = layers.Input(shape=input_shape)
 
+    x = preprocessing_pipeline(inputs)
+
     basemodel = applications.EfficientNetB7(weights='imagenet', include_top=False)
     basemodel.trainable = False
-    x = basemodel(inputs)
+    x = basemodel(x)
 
     x = layers.GlobalAveragePooling2D()(x)
 
@@ -51,8 +53,8 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
     age_output = layers.Dense(32, activation='relu', name='age_2')(age_output)
     age_output = layers.Dense(1, activation='linear', name='age_output')(age_output)
 
-    gender_output = layers.Dense(64, activation='sigmoid', name='gender_1')(x)
-    gender_output = layers.Dense(32, activation='sigmoid', name='gender_2')(gender_output)
+    gender_output = layers.Dense(64, activation='relu', name='gender_1')(x)
+    gender_output = layers.Dense(32, activation='relu', name='gender_2')(gender_output)
     gender_output = layers.Dense(3, activation='softmax', name='gender_output')(gender_output)
 
     model = models.Model(inputs=inputs, outputs={'face_output' : face_output,
