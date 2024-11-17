@@ -68,7 +68,7 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
 
     model.compile(
         run_eagerly=False,
-        optimizer=optimizers.Adam(learning_rate=0.001),
+        optimizer=optimizers.Adam(learning_rate=3e-4),
         loss={
             'face_output': losses.BinaryCrossentropy(),
             'age_output': losses.MeanSquaredError(),
@@ -181,8 +181,8 @@ if __name__ == '__main__':
 
     model_callbacks.append(callbacks.EarlyStopping(
         monitor='val_loss',
-        min_delta=0.0001,
-        patience=5,
+        min_delta=0.001,
+        patience=3,
         restore_best_weights=True,
         mode="min"
     ))
@@ -204,7 +204,7 @@ if __name__ == '__main__':
 
     history = model.fit(x=training_generator,
                         validation_data=val_generator,
-                        epochs=10,
+                        epochs=500,
                         callbacks=model_callbacks)
     print(history)
 
