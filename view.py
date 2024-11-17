@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from tensorflow.keras.models import load_model
 
 # Load model
-model = load_model('saved_models/multitask_resnet_model.h5')
+model = load_model('saved_models/multitask_resnet_model1.h5')
 
 # Directories
 face_directory = 'data/utk-face/UTKFace'
