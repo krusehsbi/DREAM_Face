@@ -12,7 +12,7 @@ import keras
 from wandb.integration.keras import WandbMetricsLogger
 
 @keras.saving.register_keras_serializable()
-def age_loos_fn(y_true, y_pred):
+def age_loss_fn(y_true, y_pred):
     y_pred = y_pred * ops.cast(ops.less(y_true, 200), y_pred.dtype)
     y_true = y_true * ops.cast(ops.less(y_true, 200), y_true.dtype)
     return losses.mean_squared_error(y_true, y_pred)
@@ -52,13 +52,11 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
     face_output = layers.Dense(1, activation='sigmoid', name='face_output')(face_output)
 
     age_output = layers.Dense(256, activation='relu', name='age_1')(x)
-    age_output = layers.BatchNormalization(name='age_normalization')(age_output)
     age_output = layers.Dropout(rate=dropout_rate, name='age_dropout')(age_output)
     age_output = layers.Dense(1, activation='relu', name='age_output')(age_output)
 
     gender_output = layers.Dense(256, activation='relu', name='gender_1')(x)
     gender_output = layers.Dense(128, activation='relu', name='gender_2')(gender_output)
-    gender_output = layers.BatchNormalization(name='gender_normalization')(gender_output)
     gender_output = layers.Dropout(rate=dropout_rate, name='gender_dropout')(gender_output)
     gender_output = layers.Dense(3, activation='softmax', name='gender_output')(gender_output)
 
@@ -71,12 +69,12 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
         optimizer=optimizers.Adam(learning_rate=0.001),
         loss={
             'face_output': losses.BinaryCrossentropy(),
-            'age_output': losses.MeanSquaredError(),
+            'age_output': age_loss_fn,
             'gender_output': losses.SparseCategoricalCrossentropy(),
         },
         metrics={
             'face_output': metrics.BinaryAccuracy(),
-            'age_output': metrics.MeanAbsoluteError(),
+            'age_output': age_metric,
             'gender_output': metrics.SparseCategoricalAccuracy(),
         })
 
