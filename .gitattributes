@@ -1,2 +1,2 @@
 # Finished keras models
-*.keras     binary
+*.keras filter=lfs diff=lfs merge=lfs -text
