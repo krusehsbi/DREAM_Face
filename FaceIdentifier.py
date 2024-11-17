@@ -15,7 +15,7 @@ from wandb.integration.keras import WandbMetricsLogger
 def age_loos_fn(y_true, y_pred):
     y_pred = y_pred * ops.cast(ops.less(y_true, 200), y_pred.dtype)
     y_true = y_true * ops.cast(ops.less(y_true, 200), y_true.dtype)
-    return losses.mean_absolute_error(y_true, y_pred)
+    return losses.mean_squared_error(y_true, y_pred)
 
 @keras.saving.register_keras_serializable()
 def age_metric(y_true, y_pred):
@@ -27,7 +27,7 @@ def age_metric(y_true, y_pred):
 def gender_loss_fn(y_true, y_pred):
     y_pred = y_pred * ops.cast(ops.less(y_true, 2), y_pred.dtype)
     y_true = y_true * ops.cast(ops.less(y_true, 2), y_true.dtype)
-    return losses.binary_crossentropy(y_true, y_pred, from_logits=True)
+    return losses.binary_crossentropy(y_true, y_pred)
 
 @keras.saving.register_keras_serializable()
 def gender_metric(y_true, y_pred):
@@ -46,15 +46,20 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
     x = basemodel(x)
 
     x = layers.GlobalAveragePooling2D()(x)
+    x = layers.BatchNormalization()(x)
 
-    face_output = layers.Dense(1, activation='sigmoid', name='face_output')(x)
+    face_output = layers.Dropout(rate=dropout_rate, name='face_dropout')(x)
+    face_output = layers.Dense(1, activation='sigmoid', name='face_output')(face_output)
 
-    age_output = layers.Dense(64, activation='relu', name='age_1')(x)
-    age_output = layers.Dense(32, activation='relu', name='age_2')(age_output)
-    age_output = layers.Dense(1, activation='linear', name='age_output')(age_output)
+    age_output = layers.Dense(256, activation='relu', name='age_1')(x)
+    age_output = layers.BatchNormalization(name='age_normalization')(age_output)
+    age_output = layers.Dropout(rate=dropout_rate, name='age_dropout')(age_output)
+    age_output = layers.Dense(1, activation='relu', name='age_output')(age_output)
 
-    gender_output = layers.Dense(64, activation='relu', name='gender_1')(x)
-    gender_output = layers.Dense(32, activation='relu', name='gender_2')(gender_output)
+    gender_output = layers.Dense(256, activation='relu', name='gender_1')(x)
+    gender_output = layers.Dense(128, activation='relu', name='gender_2')(gender_output)
+    gender_output = layers.BatchNormalization(name='gender_normalization')(gender_output)
+    gender_output = layers.Dropout(rate=dropout_rate, name='gender_dropout')(gender_output)
     gender_output = layers.Dense(3, activation='softmax', name='gender_output')(gender_output)
 
     model = models.Model(inputs=inputs, outputs={'face_output' : face_output,
@@ -63,16 +68,16 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
 
     model.compile(
         run_eagerly=False,
-        optimizer=optimizers.Adam(),
+        optimizer=optimizers.Adam(learning_rate=0.001),
         loss={
             'face_output': losses.BinaryCrossentropy(),
             'age_output': losses.MeanSquaredError(),
             'gender_output': losses.SparseCategoricalCrossentropy(),
         },
         metrics={
-            'face_output': metrics.BinaryAccuracy(name='accuracy'),
+            'face_output': metrics.BinaryAccuracy(),
             'age_output': metrics.MeanAbsoluteError(),
-            'gender_output': metrics.SparseCategoricalAccuracy(name='accuracy'),
+            'gender_output': metrics.SparseCategoricalAccuracy(),
         })
 
     utils.plot_model(model)
