@@ -51,7 +51,7 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
     age_output = layers.Dense(32, activation='relu', name='age_2')(age_output)
     age_output = layers.Dense(1, activation='linear', name='age_output')(age_output)
 
-    gender_output = layers.Dense(3, activation='sigmoid', name='gender_output')(x)
+    gender_output = layers.Dense(3, activation='softmax', name='gender_output')(x)
 
     model = models.Model(inputs=inputs, outputs={'face_output' : face_output,
                                                  'age_output' : age_output,
