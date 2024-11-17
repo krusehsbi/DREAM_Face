@@ -5,6 +5,7 @@ import pickle
 import numpy as np
 from keras import utils, applications
 import matplotlib.pyplot as plt
+import csv
 
 def load_image_as_array(directory, filename):
     image = utils.load_img(
@@ -235,9 +236,13 @@ class DataGeneratorDetector(utils.Sequence):
 
         return batch_x, batch_y_face
 
-def PlotHistory(history):
+def PlotHistory(history, direct=False):
+    if not direct:
+        history_dict = history.history
+    else:
+        history_dict = history
     # Get the number of subplots needed based on the keys
-    categories = [key for key in history.history.keys() if not key.startswith('val_')]
+    categories = [key for key in history_dict.keys() if not key.startswith('val_') and not key.startswith('learning_rate')]
     num_categories = len(categories)
 
     # Calculate the grid size to make it as close to a square as possible
@@ -253,8 +258,8 @@ def PlotHistory(history):
     # Plot each category in its subplot
     for idx, category in enumerate(categories):
         ax = axes[idx]
-        ax.plot(history.history[category])
-        ax.plot(history.history['val_' + category])
+        ax.plot(history_dict[category])
+        ax.plot(history_dict['val_' + category])
         ax.set_title(category)
         ax.set_ylabel('Loss')
         ax.set_xlabel('Epoch')
@@ -267,3 +272,25 @@ def PlotHistory(history):
     # Adjust layout
     plt.tight_layout()
     plt.show()
+
+def PlotExportedHistory(filename):
+    # Initialize the dictionary to hold the history data
+    reconstructed_history = {}
+
+    # Read the CSV file
+    with open(filename, mode='r') as file:
+        reader = csv.reader(file)
+
+        # Read the header row to get the keys
+        headers = next(reader)
+
+        # Initialize lists in the dictionary for each key
+        for header in headers:
+            reconstructed_history[header] = []
+
+        # Read the data rows and append to corresponding lists in the dictionary
+        for row in reader:
+            for idx, value in enumerate(row):
+                reconstructed_history[headers[idx]].append(float(value))
+
+    PlotHistory(reconstructed_history, True)
