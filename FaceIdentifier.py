@@ -39,9 +39,11 @@ def gender_metric(y_true, y_pred):
 def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
     inputs = layers.Input(shape=input_shape)
 
+    x = preprocessing_pipeline(inputs)
+
     basemodel = applications.EfficientNetB7(weights='imagenet', include_top=False)
     basemodel.trainable = False
-    x = basemodel(inputs)
+    x = basemodel(x)
 
     x = layers.GlobalAveragePooling2D()(x)
 
