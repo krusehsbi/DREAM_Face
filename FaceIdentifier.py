@@ -38,29 +38,20 @@ def gender_metric(y_true, y_pred):
 
 def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
     inputs = layers.Input(shape=input_shape)
-    x = preprocessing_pipeline(inputs)
 
     basemodel = applications.EfficientNetB7(weights='imagenet', include_top=False)
     basemodel.trainable = False
-    x = basemodel(x)
+    x = basemodel(inputs)
 
     x = layers.GlobalAveragePooling2D()(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.ReLU()(x)
 
-    face_output = layers.Dropout(rate=dropout_rate, name='face_dropout')(x)
-    face_output = layers.Dense(1, activation=None, name='face_output')(face_output)
+    face_output = layers.Dense(1, activation='sigmoid', name='face_output')(x)
 
-    age_output = layers.Dense(256, activation='relu', name='age_1')(x)
-    age_output = layers.Dropout(rate=dropout_rate, name='age_dropout')(age_output)
-    age_output = layers.Dense(1, activation='relu', name='age_output')(age_output)
+    age_output = layers.Dense(64, activation='relu', name='age_1')(x)
+    age_output = layers.Dense(32, activation='relu', name='age_2')(age_output)
+    age_output = layers.Dense(1, activation='linear', name='age_output')(age_output)
 
-    gender_output = layers.Dense(256, activation='relu', name='gender_1')(x)
-    #gender_output = layers.BatchNormalization()(gender_output)
-    gender_output = layers.Dense(128, activation='relu', name='gender_2')(gender_output)
-    #gender_output = layers.BatchNormalization(name='gender_normalization')(gender_output)
-    gender_output = layers.Dropout(rate=dropout_rate, name='gender_dropout')(x)
-    gender_output = layers.Dense(3, activation=None, name='gender_output')(x)
+    gender_output = layers.Dense(3, activation='sigmoid', name='gender_output')(x)
 
     model = models.Model(inputs=inputs, outputs={'face_output' : face_output,
                                                  'age_output' : age_output,
@@ -68,15 +59,15 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
 
     model.compile(
         run_eagerly=False,
-        optimizer=optimizers.Adam(learning_rate=0.0001),
+        optimizer=optimizers.Adam(),
         loss={
-            'face_output': losses.BinaryCrossentropy(from_logits=True),
-            'age_output': age_loos_fn,
-            'gender_output': losses.SparseCategoricalCrossentropy(from_logits=True),
+            'face_output': losses.BinaryCrossentropy(),
+            'age_output': losses.MeanSquaredError(),
+            'gender_output': losses.SparseCategoricalCrossentropy(),
         },
         metrics={
             'face_output': metrics.BinaryAccuracy(name='accuracy'),
-            'age_output': age_metric,
+            'age_output': metrics.MeanAbsoluteError(),
             'gender_output': metrics.SparseCategoricalAccuracy(name='accuracy'),
         })
 
@@ -236,6 +227,14 @@ if __name__ == '__main__':
         # Write data
         writer.writerows(zip(*history.history.values()))
 
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('Total Loss')
+    plt.ylabel('Loss')
+    plt.xlabel('Epoch')
+    plt.legend(['train', 'val'], loc='upper left')
+    plt.show()
+
     plt.plot(history.history['age_output_age_metric'])
     plt.plot(history.history['val_age_output_age_metric'])
     plt.title('Age Mean Absolute Error')
@@ -279,14 +278,6 @@ if __name__ == '__main__':
     plt.plot(history.history['gender_output_loss'])
     plt.plot(history.history['val_gender_output_loss'])
     plt.title('Gender Loss')
-    plt.ylabel('Loss')
-    plt.xlabel('Epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.show()
-
-    plt.plot(history.history['loss'])
-    plt.plot(history.history['val_loss'])
-    plt.title('Total Loss')
     plt.ylabel('Loss')
     plt.xlabel('Epoch')
     plt.legend(['train', 'val'], loc='upper left')
