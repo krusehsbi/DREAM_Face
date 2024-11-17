@@ -3,7 +3,7 @@ import os
 import numpy as np
 import wandb
 from keras import models, layers, applications, metrics, losses, optimizers, callbacks, saving, ops, utils, backend, random
-from utils import load_data, shuffle_arrays
+from utils import load_data, shuffle_arrays, DataGeneratorIdentifier
 import matplotlib.pyplot as plt
 from sklearn import model_selection
 from FaceDetector import preprocessing_pipeline
@@ -40,7 +40,7 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
     inputs = layers.Input(shape=input_shape)
     x = preprocessing_pipeline(inputs)
 
-    basemodel = applications.ResNet50(weights='imagenet', include_top=False)
+    basemodel = applications.EfficientNetB7(weights='imagenet', include_top=False)
     basemodel.trainable = False
     x = basemodel(x)
 
@@ -112,7 +112,7 @@ if __name__ == '__main__':
 
     # Load images and labels from both face and non-face directories
     images, labels = load_data(face_directory, non_face_directory, deserialize_data=True,
-                               serialize_data=True, preprocess_fnc=None)
+                               serialize_data=True, preprocess_fnc=applications.efficientnet.preprocess_input)
     images, labels = shuffle_arrays(images, labels)
 
     # Step 1: Split data into training (80%) and test+validation (20%) sets
@@ -142,6 +142,30 @@ if __name__ == '__main__':
         except Exception as e:
             print(e)
 
+
+    batch_size = 32
+    preprocess = applications.efficientnet.preprocess_input
+    training_generator = DataGeneratorIdentifier(
+        images_train,
+        labels_train_face,
+        labels_train_age,
+        labels_train_gender,
+        batch_size)
+
+    val_generator = DataGeneratorIdentifier(
+        images_val,
+        labels_val_face,
+        labels_val_age,
+        labels_val_gender,
+        batch_size)
+
+    test_generator = DataGeneratorIdentifier(
+        images_test,
+        labels_test_face,
+        labels_test_age,
+        labels_test_gender,
+        batch_size)
+
     checkpoint_filepath = '/tmp/checkpoints/checkpoint.face.keras'
 
     model = FaceIdentifier((128, 128, 3), 0.25)
@@ -149,22 +173,22 @@ if __name__ == '__main__':
     # if os.path.exists(checkpoint_filepath):
     # model.load_weights(checkpoint_filepath)
 
-    wandb.init(config={'bs': 12})
+    model_callbacks = []
 
-    checkpoint = callbacks.ModelCheckpoint(
+    model_callbacks.append(callbacks.ModelCheckpoint(
         filepath=checkpoint_filepath,
         monitor='val_loss',
         mode='min',
         save_best_only=True
-    )
+    ))
 
-    early_stopping = callbacks.EarlyStopping(
+    model_callbacks.append(callbacks.EarlyStopping(
         monitor='val_loss',
         min_delta=0.0001,
         patience=5,
         restore_best_weights=True,
         mode="min"
-    )
+    ))
 
 
     def scheduler(epoch, lr):
@@ -173,31 +197,21 @@ if __name__ == '__main__':
         else:
             return float(lr * ops.exp(-0.1))
 
-    learning_rate_scheduler = callbacks.LearningRateScheduler(scheduler)
+    model_callbacks.append(callbacks.LearningRateScheduler(scheduler))
 
-    history = model.fit(x=images_train,
-                        y={'face_output': labels_train_face,
-                           'age_output': labels_train_age,
-                           'gender_output': labels_train_gender},
-                        validation_data=(images_val,
-                                         {'face_output': labels_val_face,
-                                          'age_output': labels_val_age,
-                                          'gender_output': labels_val_gender}),
+    try:
+        wandb.init(config={'bs': 12})
+        model_callbacks.append(WandbMetricsLogger())
+    except Exception as e:
+        print("No wandb callback added.")
+
+    history = model.fit(x=training_generator,
+                        validation_data=val_generator,
                         epochs=10,
-                        batch_size=32,
-                        callbacks=[
-                            checkpoint,
-                            early_stopping,
-                            learning_rate_scheduler,
-                            WandbMetricsLogger()
-                        ])
+                        callbacks=model_callbacks)
     print(history)
 
-    result = model.evaluate(
-        x=images_test,
-        y={'face_output': labels_val_face,
-           'age_output': labels_val_age,
-           'gender_output': labels_val_gender})
+    result = model.evaluate(x=test_generator)
 
     print(result)
 

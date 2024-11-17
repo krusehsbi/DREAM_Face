@@ -182,13 +182,40 @@ def shuffle_arrays(array1, array2):
     permutation = np.random.permutation(len(array1))
     return array1[permutation], array2[permutation]
 
-class DataGenerator(utils.Sequence):
+class DataGeneratorIdentifier(utils.Sequence):
     def __init__(self, images, labels_face, labels_age, labels_gender, batch_size, shuffle=True):
-        super(DataGenerator, self).__init__()
+        super(DataGeneratorIdentifier, self).__init__()
         self.images = images
         self.labels_face = labels_face
         self.labels_age = labels_age
         self.labels_gender = labels_gender
+        self.batch_size = batch_size
+        self.datalen = len(images)
+        self.indices = np.arange(self.datalen)
+        self.shuffle = shuffle
+
+        if self.shuffle:
+            np.random.shuffle(self.indices)
+
+    def __len__(self):
+        return int(np.ceil(len(self.images) / self.batch_size))
+
+    def __getitem__(self, idx):
+        batch_indices = self.indices[idx * self.batch_size:(idx + 1)*self.batch_size]
+        batch_x = self.images[batch_indices]
+        batch_y_face = self.labels_face[batch_indices]
+        batch_y_age = self.labels_age[batch_indices]
+        batch_y_gender = self.labels_gender[batch_indices]
+
+        return (
+            batch_x,
+            {'face_output': batch_y_face, 'age_output': batch_y_age, 'gender_output': batch_y_gender})
+
+class DataGeneratorDetector(utils.Sequence):
+    def __init__(self, images, labels_face, batch_size, shuffle=True):
+        super(DataGeneratorDetector, self).__init__()
+        self.images = images
+        self.labels_face = labels_face
         self.batch_size = batch_size
         self.datalen = len(images)
         self.indices = np.arange(self.datalen)
@@ -203,14 +230,5 @@ class DataGenerator(utils.Sequence):
         batch_indices = self.indices[idx * self.batch_size:(idx + 1)*self.batch_size]
         batch_x = self.images[batch_indices]
         batch_y_face = self.labels_face[batch_indices]
-        batch_y_age = self.labels_age[batch_indices]
-        batch_y_gender = self.labels_gender[batch_indices]
 
-        batch_x = applications.resnet50.preprocess_input(batch_x)
-
-        sample_weights = batch_y_face.astype('float32')
-        face_sample_weights = np.ones_like(sample_weights)
-        return (
-            batch_x,
-            {'face_output': batch_y_face, 'age_output': batch_y_age, 'gender_output': batch_y_gender})
-            #{'face_output': face_sample_weights, 'age_output': sample_weights,'gender_output': sample_weights})
+        return batch_x, batch_y_face
