@@ -1,30 +1,27 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import tensorflow as tf
 from sklearn.metrics import mean_absolute_error
 from utils import load_data
+from keras import saving, applications
+from sklearn.model_selection import train_test_split
+import FaceIdentifier
 
 # Define directories
-face_directory = 'data/utk-face/UTKFace'
-non_face_directory = 'data/nonface/imagenet_images'
+face_directory = ['data/utk-face', 'data/utk-face/UTKFace']
+non_face_directory = ['data/nonface']
 
 # Load images and labels
-images, labels = load_data(face_directory, non_face_directory)
-
-# Split data into training, validation, and test sets (ensure the same split as the training script)
-from sklearn.model_selection import train_test_split
-X_train, X_temp, y_train, y_temp = train_test_split(images, labels, test_size=0.2, random_state=42)
-X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
+images, labels = load_data(face_directory, non_face_directory, preprocess_fnc=None)
 
 # Separate labels for age prediction
-y_test_age = y_test[:, 1]
+y_test_age = labels[:, 1]
 
 # Load the trained model
-model = tf.keras.models.load_model('saved_models/multitask_resnet_model1.h5')
+model = saving.load_model('saved_models/Face.keras')
 
 # Predict age on the test set
-predictions = model.predict(X_test)
-predicted_ages = predictions[1].flatten()  # Assuming age predictions are in index 1
+predictions = model.predict(applications.efficientnet.preprocess_input(images))
+predicted_ages = predictions['age_output'].flatten()  # Assuming age predictions are in index 1
 
 # Exclude non-face placeholders
 valid_age_mask = y_test_age != 200
