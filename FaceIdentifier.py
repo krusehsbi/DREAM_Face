@@ -52,7 +52,6 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
     face_output = layers.Dense(1, activation='sigmoid', name='face_output')(face_output)
 
     age_output = layers.Dense(256, activation='relu', name='age_1')(x)
-    age_output = layers.Dense(128, activation='relu', name='age_2')(age_output)
     age_output = layers.Dropout(rate=dropout_rate, name='age_dropout')(age_output)
     age_output = layers.Dense(1, activation='relu', name='age_output')(age_output)
 
