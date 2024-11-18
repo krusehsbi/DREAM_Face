@@ -43,7 +43,7 @@ def load_random_images(face_dir, non_face_dir, num_samples=6):
 
 # Function to show images with predictions
 def show_random_predictions(images, true_labels, save_path='predictions.png'):
-    predictions = model.predict(applications.resnet.preprocess_input(images))
+    predictions = model.predict(applications.efficientnet.preprocess_input(images))
     plt.figure(figsize=(15, 10))
 
     for i in range(len(images)):
