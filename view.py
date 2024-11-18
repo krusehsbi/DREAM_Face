@@ -1,11 +1,10 @@
 import random
 import os
-import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-from keras import saving, ops
+from keras import saving, ops, applications
+from utils import load_image_as_array
 import FaceIdentifier
-
 
 # Function to load a specified number of random images with true labels
 def load_random_images(face_dir, non_face_dir, num_samples=6):
@@ -20,11 +19,7 @@ def load_random_images(face_dir, non_face_dir, num_samples=6):
             age = int(parts[0])
             gender = int(parts[1])
             face_label = 1  # Face
-            image_path = os.path.join(face_dir, filename)
-            image = cv2.imread(image_path)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            image = cv2.resize(image, (128, 128))
-            images.append(image)
+            images.append(load_image_as_array(face_dir, filename))
             true_labels.append([face_label, age, gender])
 
     # Load random non-face images
@@ -40,11 +35,7 @@ def load_random_images(face_dir, non_face_dir, num_samples=6):
         face_label = 0  # Non-face
         age = 200  # Placeholder for age in non-face images
         gender = 2  # Placeholder for gender in non-face images
-        image_path = os.path.join(non_face_path, filename)
-        image = cv2.imread(image_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image = cv2.resize(image, (128, 128))
-        images.append(image)
+        images.append(load_image_as_array(non_face_dir, filename))
         true_labels.append([face_label, age, gender])
 
     return np.array(images), np.array(true_labels)
@@ -52,7 +43,7 @@ def load_random_images(face_dir, non_face_dir, num_samples=6):
 
 # Function to show images with predictions
 def show_random_predictions(images, true_labels, save_path='predictions.png'):
-    predictions = model.predict(images)
+    predictions = model.predict(applications.resnet.preprocess_input(images))
     plt.figure(figsize=(15, 10))
 
     for i in range(len(images)):
@@ -60,7 +51,7 @@ def show_random_predictions(images, true_labels, save_path='predictions.png'):
         true_face, true_age, true_gender = true_labels[i]
 
         # Extract single values from the predictions
-        pred_face = float(predictions['face_output'][i])  # Access the first element to get the scalar
+        pred_face = float(predictions['face_output'][i][0])  # Access the first element to get the scalar
         pred_age = round(predictions['age_output'][i][0])  # Access the first element for the scalar
         pred_gender = float(ops.argmax(predictions['gender_output'][i]))  # Argmax works directly as expected
 
