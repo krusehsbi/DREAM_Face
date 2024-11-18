@@ -3,7 +3,7 @@ import os
 import numpy as np
 import wandb
 from keras import models, layers, applications, metrics, losses, optimizers, callbacks, saving, ops, utils, backend, random
-from utils import load_data, shuffle_arrays, DataGeneratorIdentifier
+from utils import load_data, shuffle_arrays, DataGeneratorIdentifier, PlotHistory
 import matplotlib.pyplot as plt
 from sklearn import model_selection
 from FaceDetector import preprocessing_pipeline
@@ -66,7 +66,7 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
 
     model.compile(
         run_eagerly=False,
-        optimizer=optimizers.Adam(learning_rate=0.001),
+        optimizer=optimizers.Adam(learning_rate=3e-4),
         loss={
             'face_output': losses.BinaryCrossentropy(),
             'age_output': age_loss_fn,
@@ -82,10 +82,7 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
 
     return model
 
-def infer_images(images, model=None):
-    if model is None:
-        model = saving.load_model("saved_models/FaceDetector.keras")
-
+def infer_images(images, model):
     for image in images:
         infer_image(image, model)
 
@@ -94,7 +91,7 @@ def infer_image(image, model):
     plt.show()
 
     predictions = model.predict(ops.expand_dims(image, 0))
-    score_face = float(ops.sigmoid(predictions['face_output'][0]))
+    score_face = float(predictions['face_output'][0])
     score_age = round(predictions['age_output'][0][0])
     score_gender = float(ops.argmax(predictions['gender_output'][0]))
 
@@ -182,8 +179,8 @@ if __name__ == '__main__':
 
     model_callbacks.append(callbacks.EarlyStopping(
         monitor='val_loss',
-        min_delta=0.0001,
-        patience=5,
+        min_delta=0.001,
+        patience=3,
         restore_best_weights=True,
         mode="min"
     ))
@@ -205,7 +202,7 @@ if __name__ == '__main__':
 
     history = model.fit(x=training_generator,
                         validation_data=val_generator,
-                        epochs=10,
+                        epochs=500,
                         callbacks=model_callbacks)
     print(history)
 
@@ -234,58 +231,4 @@ if __name__ == '__main__':
         # Write data
         writer.writerows(zip(*history.history.values()))
 
-    plt.plot(history.history['loss'])
-    plt.plot(history.history['val_loss'])
-    plt.title('Total Loss')
-    plt.ylabel('Loss')
-    plt.xlabel('Epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.show()
-
-    plt.plot(history.history['age_output_age_metric'])
-    plt.plot(history.history['val_age_output_age_metric'])
-    plt.title('Age Mean Absolute Error')
-    plt.ylabel('Error')
-    plt.xlabel('Epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.show()
-
-    plt.plot(history.history['age_output_loss'])
-    plt.plot(history.history['val_age_output_loss'])
-    plt.title('Age Loss')
-    plt.ylabel('Loss')
-    plt.xlabel('Epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.show()
-
-    plt.plot(history.history['face_output_accuracy'])
-    plt.plot(history.history['val_face_output_accuracy'])
-    plt.title('Face Accuracy')
-    plt.ylabel('Accuracy')
-    plt.xlabel('Epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.show()
-
-    plt.plot(history.history['face_output_loss'])
-    plt.plot(history.history['val_face_output_loss'])
-    plt.title('Face Loss')
-    plt.ylabel('Loss')
-    plt.xlabel('Epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.show()
-
-    plt.plot(history.history['gender_output_accuracy'])
-    plt.plot(history.history['val_gender_output_accuracy'])
-    plt.title('Gender Accuracy')
-    plt.ylabel('Accuracy')
-    plt.xlabel('Epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.show()
-
-    plt.plot(history.history['gender_output_loss'])
-    plt.plot(history.history['val_gender_output_loss'])
-    plt.title('Gender Loss')
-    plt.ylabel('Loss')
-    plt.xlabel('Epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.show()
+    PlotHistory(history)

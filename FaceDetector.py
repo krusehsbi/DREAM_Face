@@ -1,7 +1,7 @@
 import numpy as np
 from keras import layers, applications, metrics, losses, optimizers, callbacks, saving, ops, random
 
-from utils import load_data, shuffle_arrays, DataGeneratorIdentifier, DataGeneratorDetector
+from utils import load_data, shuffle_arrays, DataGeneratorIdentifier, DataGeneratorDetector, PlotHistory
 
 import matplotlib.pyplot as plt
 
@@ -129,42 +129,33 @@ if __name__ == '__main__':
     #if os.path.exists(checkpoint_filepath):
         #model.load_weights(checkpoint_filepath)
 
-    checkpoint = callbacks.ModelCheckpoint(
+    model_callbacks = []
+    model_callbacks.append(callbacks.ModelCheckpoint(
         filepath=checkpoint_filepath,
         monitor='val_face_accuracy',
         mode='max',
         save_best_only=True
-    )
+    ))
 
-    early_stopping = callbacks.EarlyStopping(
+    model_callbacks.append(callbacks.EarlyStopping(
         monitor='val_face_accuracy',
-        min_delta=0.0001,
-        patience=5,
+        min_delta=0.001,
+        patience=3,
         restore_best_weights=True,
         mode="max"
-    )
+    ))
 
     history = model.fit(x=training_generator,
               validation_data=val_generator,
-              epochs=5,
-              callbacks=[
-                  checkpoint,
-                  early_stopping
-              ])
-    print(history)
+              epochs=500,
+              callbacks=model_callbacks)
 
     result = model.evaluate(x=test_generator)
     print(result)
 
     model.save("saved_models/FaceDetector.keras")
 
-    plt.plot(history.history['loss'])
-    plt.plot(history.history['val_loss'])
-    plt.title('Total Loss')
-    plt.ylabel('Loss')
-    plt.xlabel('Epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.show()
+    PlotHistory(history)
 
     model = saving.load_model("saved_models/FaceDetector.keras")
 
