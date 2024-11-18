@@ -1,5 +1,5 @@
 import numpy as np
-from keras import layers, applications, metrics, losses, optimizers, callbacks, saving, ops, random
+from keras import layers, applications, metrics, losses, optimizers, callbacks, saving, ops, random, utils
 
 from utils import load_data, shuffle_arrays, DataGeneratorIdentifier, DataGeneratorDetector, PlotHistory
 
@@ -43,7 +43,7 @@ def FaceDetector(input_shape):
     inputs = layers.Input(shape=input_shape)
     x = preprocessing_pipeline(inputs)
 
-    basemodel = applications.EfficientNetB7(weights='imagenet', include_top=False)
+    basemodel = applications.EfficientNetB0(weights='imagenet', include_top=False)
     basemodel.trainable = False
     x = basemodel(x)
 
@@ -63,6 +63,8 @@ def FaceDetector(input_shape):
     )
 
     model.summary()
+
+    utils.plot_model(model)
 
     return model
 
@@ -139,11 +141,16 @@ if __name__ == '__main__':
 
     model_callbacks.append(callbacks.EarlyStopping(
         monitor='val_face_accuracy',
-        min_delta=0.001,
+        min_delta=0.0001,
         patience=3,
         restore_best_weights=True,
         mode="max"
     ))
+
+    def scheduler(epoch, lr):
+        return float(lr * ops.exp(-0.1))
+
+    model_callbacks.append(callbacks.LearningRateScheduler(scheduler))
 
     history = model.fit(x=training_generator,
               validation_data=val_generator,
