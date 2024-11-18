@@ -3,7 +3,7 @@ import os
 import numpy as np
 import wandb
 from keras import models, layers, applications, metrics, losses, optimizers, callbacks, saving, ops, utils, backend, random
-from utils import load_data, shuffle_arrays, DataGeneratorIdentifier
+from utils import load_data, shuffle_arrays, DataGeneratorIdentifier, PlotHistory
 import matplotlib.pyplot as plt
 from sklearn import model_selection
 from FaceDetector import preprocessing_pipeline
@@ -12,10 +12,10 @@ import keras
 from wandb.integration.keras import WandbMetricsLogger
 
 @keras.saving.register_keras_serializable()
-def age_loos_fn(y_true, y_pred):
+def age_loss_fn(y_true, y_pred):
     y_pred = y_pred * ops.cast(ops.less(y_true, 200), y_pred.dtype)
     y_true = y_true * ops.cast(ops.less(y_true, 200), y_true.dtype)
-    return losses.mean_absolute_error(y_true, y_pred)
+    return losses.mean_squared_error(y_true, y_pred)
 
 @keras.saving.register_keras_serializable()
 def age_metric(y_true, y_pred):
@@ -27,7 +27,7 @@ def age_metric(y_true, y_pred):
 def gender_loss_fn(y_true, y_pred):
     y_pred = y_pred * ops.cast(ops.less(y_true, 2), y_pred.dtype)
     y_true = y_true * ops.cast(ops.less(y_true, 2), y_true.dtype)
-    return losses.binary_crossentropy(y_true, y_pred, from_logits=True)
+    return losses.binary_crossentropy(y_true, y_pred)
 
 @keras.saving.register_keras_serializable()
 def gender_metric(y_true, y_pred):
@@ -70,19 +70,16 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
             'gender_output': losses.SparseCategoricalCrossentropy(),
         },
         metrics={
-            'face_output': metrics.BinaryAccuracy(name='accuracy'),
+            'face_output': metrics.BinaryAccuracy(),
             'age_output': metrics.MeanAbsoluteError(),
-            'gender_output': metrics.SparseCategoricalAccuracy(name='accuracy'),
+            'gender_output': metrics.SparseCategoricalAccuracy(),
         })
 
     utils.plot_model(model)
 
     return model
 
-def infer_images(images, model=None):
-    if model is None:
-        model = saving.load_model("saved_models/FaceDetector.keras")
-
+def infer_images(images, model):
     for image in images:
         infer_image(image, model)
 
@@ -91,7 +88,7 @@ def infer_image(image, model):
     plt.show()
 
     predictions = model.predict(ops.expand_dims(image, 0))
-    score_face = float(ops.sigmoid(predictions['face_output'][0]))
+    score_face = float(predictions['face_output'][0])
     score_age = round(predictions['age_output'][0][0])
     score_gender = float(ops.argmax(predictions['gender_output'][0]))
 
@@ -187,10 +184,7 @@ if __name__ == '__main__':
 
 
     def scheduler(epoch, lr):
-        if epoch < 2:
-            return float(lr)
-        else:
-            return float(lr * ops.exp(-0.1))
+        return float(lr * ops.exp(-0.1))
 
     model_callbacks.append(callbacks.LearningRateScheduler(scheduler))
 
@@ -202,7 +196,7 @@ if __name__ == '__main__':
 
     history = model.fit(x=training_generator,
                         validation_data=val_generator,
-                        epochs=10,
+                        epochs=500,
                         callbacks=model_callbacks)
     print(history)
 
@@ -231,58 +225,4 @@ if __name__ == '__main__':
         # Write data
         writer.writerows(zip(*history.history.values()))
 
-    plt.plot(history.history['loss'])
-    plt.plot(history.history['val_loss'])
-    plt.title('Total Loss')
-    plt.ylabel('Loss')
-    plt.xlabel('Epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.show()
-
-    plt.plot(history.history['age_output_age_metric'])
-    plt.plot(history.history['val_age_output_age_metric'])
-    plt.title('Age Mean Absolute Error')
-    plt.ylabel('Error')
-    plt.xlabel('Epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.show()
-
-    plt.plot(history.history['age_output_loss'])
-    plt.plot(history.history['val_age_output_loss'])
-    plt.title('Age Loss')
-    plt.ylabel('Loss')
-    plt.xlabel('Epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.show()
-
-    plt.plot(history.history['face_output_accuracy'])
-    plt.plot(history.history['val_face_output_accuracy'])
-    plt.title('Face Accuracy')
-    plt.ylabel('Accuracy')
-    plt.xlabel('Epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.show()
-
-    plt.plot(history.history['face_output_loss'])
-    plt.plot(history.history['val_face_output_loss'])
-    plt.title('Face Loss')
-    plt.ylabel('Loss')
-    plt.xlabel('Epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.show()
-
-    plt.plot(history.history['gender_output_accuracy'])
-    plt.plot(history.history['val_gender_output_accuracy'])
-    plt.title('Gender Accuracy')
-    plt.ylabel('Accuracy')
-    plt.xlabel('Epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.show()
-
-    plt.plot(history.history['gender_output_loss'])
-    plt.plot(history.history['val_gender_output_loss'])
-    plt.title('Gender Loss')
-    plt.ylabel('Loss')
-    plt.xlabel('Epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.show()
+    PlotHistory(history)
