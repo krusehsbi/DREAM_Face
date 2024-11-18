@@ -41,7 +41,7 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
 
     x = preprocessing_pipeline(inputs)
 
-    basemodel = applications.ResNet50(weights='imagenet', include_top=False)
+    basemodel = applications.efficientnet.EfficientNetB0(weights='imagenet', include_top=False)
     basemodel.trainable = False
     x = basemodel(x)
 
@@ -107,7 +107,7 @@ if __name__ == '__main__':
 
     # Load images and labels from both face and non-face directories
     images, labels = load_data(face_directory, non_face_directory, deserialize_data=True,
-                               serialize_data=True, preprocess_fnc=applications.resnet.preprocess_input)
+                               serialize_data=True, preprocess_fnc=applications.efficientnet.preprocess_input)
     images, labels = shuffle_arrays(images, labels)
 
     # Step 1: Split data into training (80%) and test+validation (20%) sets
