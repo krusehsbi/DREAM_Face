@@ -52,6 +52,7 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
     face_output = layers.Dense(1, activation='sigmoid', name='face_output')(face_output)
 
     age_output = layers.Dense(256, activation='relu', name='age_1')(x)
+    age_output = layers.Dense(128, activation='relu', name='age_2')(age_output)
     age_output = layers.Dropout(rate=dropout_rate, name='age_dropout')(age_output)
     age_output = layers.Dense(1, activation='relu', name='age_output')(age_output)
 
@@ -179,18 +180,15 @@ if __name__ == '__main__':
 
     model_callbacks.append(callbacks.EarlyStopping(
         monitor='val_loss',
-        min_delta=0.001,
-        patience=3,
+        min_delta=0.0001,
+        patience=5,
         restore_best_weights=True,
         mode="min"
     ))
 
 
     def scheduler(epoch, lr):
-        if epoch < 2:
-            return float(lr)
-        else:
-            return float(lr * ops.exp(-0.1))
+        return float(lr * ops.exp(-0.1))
 
     model_callbacks.append(callbacks.LearningRateScheduler(scheduler))
 
