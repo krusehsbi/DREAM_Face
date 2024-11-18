@@ -1,36 +1,19 @@
+import PIL
 import matplotlib.pyplot as plt
+from PIL.Image import fromarray
 
+from FaceIdentifier import infer_images
 from utils import *
 import numpy as np
 from keras import saving, ops, applications
-from tkinter import *
-
-def infer_image(image, model):
-    plt.imshow(image)
-    plt.show()
-    predictions = model.predict(
-        applications.resnet.preprocess_input(
-            ops.expand_dims(image, 0)
-        ),
-        batch_size=1
-    )
-    print(predictions)
-    face_likeliness = float(ops.sigmoid(predictions[0][0]))
-    if face_likeliness > 0.5:
-        age = float(ops.relu(predictions[1]))
-        gender = float(ops.argmax(predictions[2]))
-        print(f"The image contains a face with {100 * face_likeliness:.2f}% confidence."
-              f"The person is {age} years old."
-              f"It has the gender {float(gender)}")
-    else:
-        print(f"The image contains no face with {100 * (1 - face_likeliness):.2f}% confidence.")
-
+from tkinter import Tk, Label, PhotoImage, Button
+from PIL import Image, ImageTk
 
 if __name__ == "__main__":
     DESERIALIZE_DATA = True
     SERIALIZE_DATA = True
 
-    model = saving.load_model('saved_models/multitask_resnet_model_dropout_face.keras')
+    model = saving.load_model('saved_models/Face.keras')
     model.summary()
 
     # Define directories
@@ -39,24 +22,44 @@ if __name__ == "__main__":
 
     # Load images and labels from both face and non-face directories
     images, labels = load_data(face_directory, non_face_directory, deserialize_data=DESERIALIZE_DATA,
-                               serialize_data=SERIALIZE_DATA)
+                               serialize_data=SERIALIZE_DATA, preprocess_fnc=None)
     images, labels = shuffle_arrays(images, labels)
-
-    test_images = images[np.random.choice(images.shape[0], 8, replace=False)]
-
-    for image in test_images:
-        infer_image(image, model)
 
 
     root=Tk()
     root.title("FACE_Dream Inference ")
     root.geometry('600x400')
 
-    lbl = Label(root, text="Hello world!")
+    lbl = Label(root, text="Press the button to load an image.")
     lbl.pack()
 
+    # Create a label for the image display
+    image_label = Label(root)
+    image_label.pack(fill="both", expand=True)
+
+    # To store the reference to the image
+    imgtk_ref = None
+
     def infere_new_image():
-        lbl.configure(text="New Image")
+        test_image = images[np.random.choice(images.shape[0], 1, replace=False)]
+        label = infer_images(applications.efficientnet.preprocess_input(test_image), model, False)
+
+        # Get the dimensions of the image container
+        container_height = image_label.winfo_height()
+
+        # Resize the image to fit the container
+        im = Image.fromarray(test_image[0])
+        im_resized = im.resize((int(container_height * 0.8), int(container_height * 0.8)))
+        imgtk = ImageTk.PhotoImage(im_resized)
+
+        # Update the reference to prevent garbage collection
+        global imgtk_ref
+        imgtk_ref = imgtk
+        # Update the label text and image
+        lbl.configure(text=label)
+        image_label.configure(image=imgtk)
+        image_label.image = imgtk
+
 
     btn = Button(root, text="Load new Image",
                  fg = "red", command=infere_new_image)

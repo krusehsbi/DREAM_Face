@@ -82,23 +82,30 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
 
     return model
 
-def infer_images(images, model):
+def infer_images(images, model, show=True):
     for image in images:
-        infer_image(image, model)
+        return infer_image(image, model, show)
 
-def infer_image(image, model):
-    plt.imshow(image)
-    plt.show()
+def infer_image(image, model, show=True):
+    if show:
+        plt.imshow(image)
+        plt.show()
 
     predictions = model.predict(ops.expand_dims(image, 0))
     score_face = float(predictions['face_output'][0])
     score_age = round(predictions['age_output'][0][0])
     score_gender = float(ops.argmax(predictions['gender_output'][0]))
 
-    print(f"This image contains a face with {100 * score_face:.2f}% certainty.")
+    label = f"This image contains a face with {100 * score_face:.2f}% certainty."
+    print(label)
 
     if score_face > 0.5:
-        print(f"The person has gender {"male" if score_gender == 0 else "female" } and is {score_age} years old.")
+        additional_label = f"The person has gender {"male" if score_gender == 0 else "female" } and is {score_age} years old."
+        print(additional_label)
+        label += '\n' + additional_label
+
+    return label
+
 
 if __name__ == '__main__':
     # Define directories
