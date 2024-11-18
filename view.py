@@ -1,3 +1,4 @@
+import math
 import random
 import os
 import numpy as np
@@ -42,7 +43,7 @@ def load_random_images(face_dir, non_face_dir, num_samples=6):
 
 
 # Function to show images with predictions
-def show_random_predictions(images, true_labels, save_path='predictions.png'):
+def show_random_predictions(images, true_labels, model, save_path='predictions.png'):
     predictions = model.predict(applications.efficientnet.preprocess_input(images))
     plt.figure(figsize=(15, 10))
 
@@ -68,6 +69,41 @@ def show_random_predictions(images, true_labels, save_path='predictions.png'):
     plt.savefig(save_path)
     print(f"Plot saved to {save_path}")
 
+def load_all_images(dir):
+    images = []
+    for filename in os.listdir(dir):
+        images.append(load_image_as_array(dir, filename))
+
+    return np.array(images)
+
+def predict_all_images(images, model, save_path='all_predictions.png'):
+    predictions = model.predict(applications.efficientnet.preprocess_input(images))
+    plt.figure(figsize=(15, 10))
+
+    for i in range(len(images)):
+        image = images[i]
+
+        # Extract single values from the predictions
+        pred_face = float(predictions['face_output'][i][0])  # Access the first element to get the scalar
+        pred_age = round(predictions['age_output'][i][0])  # Access the first element for the scalar
+        pred_gender = float(ops.argmax(predictions['gender_output'][i]))  # Argmax works directly as expected
+
+
+        # Calculate the grid size to make it as close to a square as possible
+        num_cols = math.ceil(math.sqrt(len(images)))
+        num_rows = math.ceil(len(images) / num_cols)
+
+        # Display the image with predicted labels
+        plt.subplot(num_rows, num_cols, i + 1)
+        plt.imshow(image.astype("uint8"))
+        plt.axis('off')
+        title_pred = f"Pred: Face {100 * pred_face:.2f}%, Age {pred_age}, Gender {"male" if pred_gender == 0 else "female"}" if pred_face >= 0.5 else f"Pred: Face {100 * pred_face:.2f}%"
+        plt.title(title_pred)
+
+    #plt.tight_layout()
+    # Save plot to file instead of showing it
+    plt.savefig(save_path)
+    print(f"Plot saved to {save_path}")
 
 if __name__ == '__main__':
     # Load model
@@ -77,6 +113,8 @@ if __name__ == '__main__':
     face_directory = 'data/utk-face'
     non_face_directory = 'data/nonface/openimages'
 
+    predict_all_images(load_all_images('data/therealest'), model)
+
     # Load random images and display predictions
     images, true_labels = load_random_images(face_directory, non_face_directory)
-    show_random_predictions(images, true_labels)
+    show_random_predictions(images, true_labels, model)
