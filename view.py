@@ -1,3 +1,4 @@
+import argparse
 import math
 import random
 import os
@@ -6,6 +7,7 @@ import matplotlib.pyplot as plt
 from keras import saving, ops, applications
 from utils import load_image_as_array
 import FaceIdentifier
+import FaceDetector
 
 # Function to load a specified number of random images with true labels
 def load_random_images(face_dir, non_face_dir, num_samples=6):
@@ -42,8 +44,8 @@ def load_random_images(face_dir, non_face_dir, num_samples=6):
     return np.array(images), np.array(true_labels)
 
 
-# Function to show images with predictions
-def show_random_predictions(images, true_labels, model, save_path='predictions.png'):
+# Function to show images with face, age and gender predictions
+def show_random_predictions_face(images, true_labels, noshow, save_path='predictions_face.png'):
     predictions = model.predict(applications.efficientnet.preprocess_input(images))
     plt.figure(figsize=(15, 10))
 
@@ -65,7 +67,36 @@ def show_random_predictions(images, true_labels, model, save_path='predictions.p
         plt.title(title_true + title_pred)
 
     plt.tight_layout()
-    # Save plot to file instead of showing it
+    # Save plot to file and display it
+    if not noshow:
+        plt.show()
+    plt.savefig(save_path)
+    print(f"Plot saved to {save_path}")
+
+# Function to show images with face predictions
+def show_random_predictions_face_detector(images, true_labels, noshow, save_path='predictions_face_detector.png'):
+    predictions = model.predict(applications.efficientnet.preprocess_input(images))
+    plt.figure(figsize=(15, 10))
+
+    for i in range(len(images)):
+        image = images[i]
+        true_face, true_age, true_gender = true_labels[i]
+
+        # Extract single values from the predictions
+        pred_face = float(ops.sigmoid(predictions[i][0]))  # Access the first element to get the scalar
+
+        # Display the image with true vs predicted labels
+        plt.subplot(2, 3, i + 1)
+        plt.imshow(image.astype("uint8"))
+        plt.axis('off')
+        title_true = f"True: Face {"100%" if true_face == 1 else "0%"}"
+        title_pred = f"Pred: Face {100 * pred_face:.2f}%"
+        plt.title(title_true + title_pred)
+
+    plt.tight_layout()
+    # Save plot to file and display it
+    if not noshow:
+        plt.show()
     plt.savefig(save_path)
     print(f"Plot saved to {save_path}")
 
@@ -76,7 +107,7 @@ def load_all_images(dir):
 
     return np.array(images)
 
-def predict_all_images(images, model, save_path='all_predictions.png'):
+def predict_all_images(images, model, noshow, save_path='all_predictions.png'):
     predictions = model.predict(applications.efficientnet.preprocess_input(images))
     plt.figure(figsize=(15, 10))
 
@@ -100,21 +131,66 @@ def predict_all_images(images, model, save_path='all_predictions.png'):
         title_pred = f"Pred: Face {100 * pred_face:.2f}%, Age {pred_age}, Gender {"male" if pred_gender == 0 else "female"}" if pred_face >= 0.5 else f"Pred: Face {100 * pred_face:.2f}%"
         plt.title(title_pred)
 
-    #plt.tight_layout()
-    # Save plot to file instead of showing it
+    plt.tight_layout()
+    if not noshow:
+        plt.show()
+    # Save plot to file
     plt.savefig(save_path)
     print(f"Plot saved to {save_path}")
 
 if __name__ == '__main__':
-    # Load model
-    model = saving.load_model('saved_models/Face.keras')
+    parser = argparse.ArgumentParser(
+        prog='Model-Viewer',
+        description='Can be used to view the results of a trained model.'
+    )
+    parser.add_argument(
+        '-face',
+        action='store_true',
+        help='Load the face identifier model with age and gender prediction.'
+            'The model is supposed to be in "saved_models/Face.keras"'
+             'Results will be saved under "predictions_face.png"'
+    )
+    parser.add_argument(
+        '-facedetector',
+        action='store_true',
+        help='Load the face detector model with face detection only.'
+             'The model is supposed to be in "saved_models/FaceDetector.keras"'
+             'Results will be saved under "predictions_face_detector.png"'
+    )
+    parser.add_argument(
+        '-noshow',
+        action='store_true',
+        help='Deactivates immediate printing of the result to the console.'
+    )
+    parser.add_argument(
+        '-datafolder',
+        type=str,
+        action='store',
+        help='If set, will use the images in the specified folder for the predictions.'
+    )
+    parser.print_help()
+    args = parser.parse_args()
 
     # Directories
     face_directory = 'data/utk-face'
     non_face_directory = 'data/nonface/openimages'
 
-    predict_all_images(load_all_images('data/therealest'), model)
-
-    # Load random images and display predictions
+    # Load random images
     images, true_labels = load_random_images(face_directory, non_face_directory)
-    show_random_predictions(images, true_labels, model)
+
+    if args.face:
+        # Load face model and show its predictions
+        model = saving.load_model('saved_models/Face.keras')
+        if not args.datafolder:
+            show_random_predictions_face(images, true_labels, noshow = args.noshow)
+        else:
+            predict_all_images(load_all_images(args.datafolder), model, noshow=args.noshow)
+    elif args.facedetector:
+        # Load face detector model and show its predictions
+        model = saving.load_model('saved_models/FaceDetector.keras')
+        if not args.datafolder:
+            show_random_predictions_face_detector(images, true_labels, noshow = args.noshow)
+        else:
+            predict_all_images(load_all_images(args.datafolder), model, noshow=args.noshow)
+
+
