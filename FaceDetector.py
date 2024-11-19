@@ -43,7 +43,7 @@ def FaceDetector(input_shape):
     inputs = layers.Input(shape=input_shape)
     x = preprocessing_pipeline(inputs)
 
-    basemodel = applications.EfficientNetB7(weights='imagenet', include_top=False)
+    basemodel = applications.EfficientNetB0(weights='imagenet', include_top=False)
     basemodel.trainable = False
     x = basemodel(x)
 
