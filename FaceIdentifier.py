@@ -1,3 +1,5 @@
+import os
+import numpy as np
 import wandb
 from keras import models, layers, applications, metrics, losses, optimizers, callbacks, saving, ops, utils, backend, random
 from utils import load_data, shuffle_arrays, DataGeneratorIdentifier, PlotHistory
@@ -305,11 +307,7 @@ if __name__ == '__main__':
     model.save("saved_models/Face.keras")
 
     # Final evaluation on test set
-    results = model.evaluate(x=images_test,
-                             y={'face_output': labels_test_face,
-                                'age_output': labels_test_age,
-                                'gender_output': labels_test_gender},
-                             batch_size=32,
+    results = model.evaluate(x=test_generator,
                              return_dict=True)
     print(results)
 
