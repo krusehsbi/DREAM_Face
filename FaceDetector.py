@@ -40,7 +40,7 @@ class RandomGrayscale(layers.Layer):
         return config
 
 # Preprocessing pipeline that applies random data augmentations
-def preprocessing_pipeline(inputs):
+def preprocessing_pipeline(inputs, preprocessing):
     """
     Applies a sequence of random augmentations to the input images:
     - Random Zoom
@@ -56,6 +56,7 @@ def preprocessing_pipeline(inputs):
     x = layers.RandomBrightness(0.1)(x)
     x = layers.RandomContrast(0.1)(x)
     x = RandomGrayscale(probability=0.5)(x)
+    x = preprocessing(x)
     return x
 
 # Face detection model using EfficientNetB0 as a feature extractor

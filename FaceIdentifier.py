@@ -1,7 +1,10 @@
 import os
+from pathlib import Path
+from types import SimpleNamespace
+
 import numpy as np
 import wandb
-from keras import models, layers, applications, metrics, losses, optimizers, callbacks, saving, ops, utils, backend, random
+from keras import models, layers, applications, metrics, losses, optimizers, callbacks, saving, ops, utils
 from utils import load_data, shuffle_arrays, DataGeneratorIdentifier, PlotHistory
 import matplotlib.pyplot as plt
 from sklearn import model_selection
@@ -9,6 +12,7 @@ from FaceDetector import preprocessing_pipeline
 import csv
 import keras
 from wandb.integration.keras import WandbMetricsLogger
+import random
 
 """
 This module contains a multi-task deep learning model for face detection, age estimation, and gender classification. 
@@ -95,25 +99,53 @@ def gender_metric(y_true, y_pred):
     y_true = ops.where(mask, y_true, ops.zeros_like(y_true))
     return metrics.binary_accuracy(y_true, y_pred)
 
-def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
+def FaceIdentifier(
+        input_shape=(256, 256, 3),
+        dropout_rate=0.25,
+        learning_rate=3e-4,
+        model='efficientnet-b0'
+):
     """
     Defines and compiles a multi-task model for face detection, age estimation, and gender classification.
-    
+
     Args:
     - input_shape: Shape of the input images (default: (128, 128, 3)).
     - dropout_rate: Dropout rate for regularization (default: 0.25).
-    
+
     Returns:
     - model: Compiled Keras model for face identification, age, and gender prediction.
     """
     inputs = layers.Input(shape=input_shape)
 
-    # Apply preprocessing pipeline (augmentations, etc.)
-    x = preprocessing_pipeline(inputs)
+    # Load pre-trained model with frozen weights
+    basemodel = None
+    preprocessing = None
+    match model:# [efficientnet-b0/b4, resnet50/101, inception, mobilenet
+        case 'efficientnet-b0':
+            basemodel = applications.efficientnet.EfficientNetB0(weights='imagenet', include_top=False)
+            preprocessing = applications.efficientnet.preprocess_input
+        case 'efficientnet-b4':
+            basemodel = applications.efficientnet.EfficientNetB4(weights='imagenet', include_top=False)
+            preprocessing = applications.efficientnet.preprocess_input
+        case 'resnet50':
+            basemodel = applications.ResNet50(weights='imagenet', include_top=False)
+            preprocessing = applications.resnet.preprocess_input
+        case 'resnet101':
+            basemodel = applications.ResNet101(weights='imagenet', include_top=False)
+            preprocessing = applications.resnet.preprocess_input
+        case 'inception':
+            basemodel = applications.InceptionV3(weights='imagenet', include_top=False)
+            preprocessing = applications.inception_v3.preprocess_input
+        case 'mobilenet':
+            basemodel = applications.MobileNetV2(weights='imagenet', include_top=False)
+            preprocessing = applications.mobilenet_v2.preprocess_input
 
-    # Load pre-trained EfficientNetB0 as the base model (frozen weights)
-    basemodel = applications.efficientnet.EfficientNetB0(weights='imagenet', include_top=False)
+    if basemodel is None:
+        raise Exception('Base model not defined.')
     basemodel.trainable = False
+
+    # Apply preprocessing pipeline (augmentations, etc.)
+    x = preprocessing_pipeline(inputs, preprocessing)
     x = basemodel(x)
 
     # Add global average pooling and batch normalization
@@ -125,13 +157,18 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
     face_output = layers.Dense(1, activation='sigmoid', name='face_output')(face_output)
 
     # Define age output branch (regression)
-    age_output = layers.Dense(256, activation='relu', name='age_1')(x)
+    age_output = layers.Dense(2024, activation='relu', name='age_1')(x)
+    age_output = layers.BatchNormalization()(age_output)
+    age_output = layers.Dense(1024, activation='relu', name='age_2')(age_output)
+    age_output = layers.BatchNormalization()(age_output)
     age_output = layers.Dropout(rate=dropout_rate, name='age_dropout')(age_output)
     age_output = layers.Dense(1, activation='relu', name='age_output')(age_output)
 
     # Define gender output branch (multi-class classification)
-    gender_output = layers.Dense(256, activation='relu', name='gender_1')(x)
-    gender_output = layers.Dense(128, activation='relu', name='gender_2')(gender_output)
+    gender_output = layers.Dense(2024, activation='relu', name='gender_1')(x)
+    gender_output = layers.BatchNormalization()(gender_output)
+    gender_output = layers.Dense(1024, activation='relu', name='gender_2')(gender_output)
+    gender_output = layers.BatchNormalization()(gender_output)
     gender_output = layers.Dropout(rate=dropout_rate, name='gender_dropout')(gender_output)
     gender_output = layers.Dense(1, activation='sigmoid', name='gender_output')(gender_output)
 
@@ -143,7 +180,7 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
     # Compile the model with respective loss functions and metrics
     model.compile(
         run_eagerly=False,
-        optimizer=optimizers.Adam(learning_rate=3e-4),
+        optimizer=optimizers.Adam(learning_rate=learning_rate),
         loss={
             'face_output': losses.BinaryCrossentropy(),
             'age_output': age_loss_fn,
@@ -209,28 +246,18 @@ def infer_image(image, model, show=True):
 
     return label
 
-
-if __name__ == '__main__':
-    # Define directories
-    face_directory = ['data/utk-face', 'data/utk-face/UTKFace']
-    non_face_directory = ['data/nonface']
-
-    # Load images and labels from both face and non-face directories
-    images, labels = load_data(face_directory, non_face_directory, deserialize_data=True,
-                               serialize_data=True, preprocess_fnc=applications.efficientnet.preprocess_input)
-    images, labels = shuffle_arrays(images, labels)
-
+def train_and_evaluate_hyperparameters(hyperparameters, x, y, model_save_path):
     # Step 1: Split data into training (80%) and test+validation (20%) sets
-    images_train, images_temp, labels_train, labels_temp = model_selection.train_test_split(images,
-                                                                                            labels,
-                                                                                            test_size=0.2,
-                                                                                            random_state=42)
+    images_train, images_temp, labels_train, labels_temp = model_selection.train_test_split(x,
+                                                                                  y,
+                                                                                  test_size=0.2,
+                                                                                  random_state=random.randint(0, 20000))
 
     # Step 2: Split the remaining 20% data into validation (10%) and test (10%) sets
     images_val, images_test, labels_val, labels_test = model_selection.train_test_split(images_temp,
-                                                                                        labels_temp,
-                                                                                        test_size=0.5,
-                                                                                        random_state=42)
+                                                                              labels_temp,
+                                                                              test_size=0.5,
+                                                                              random_state=random.randint(0, 20000))
 
     # Separate the labels for each task (face/no face, age, gender)
     labels_train_face, labels_train_age, labels_train_gender = (
@@ -247,91 +274,115 @@ if __name__ == '__main__':
         except Exception as e:
             print(e)
 
-
-    batch_size = 32
-    preprocess = applications.efficientnet.preprocess_input
     training_generator = DataGeneratorIdentifier(
         images_train,
         labels_train_face,
         labels_train_age,
         labels_train_gender,
-        batch_size)
+        hyperparameters.batch_size)
 
     val_generator = DataGeneratorIdentifier(
         images_val,
         labels_val_face,
         labels_val_age,
         labels_val_gender,
-        batch_size)
+        hyperparameters.batch_size)
 
     test_generator = DataGeneratorIdentifier(
         images_test,
         labels_test_face,
         labels_test_age,
         labels_test_gender,
-        batch_size)
+        hyperparameters.batch_size)
 
     checkpoint_filepath = '/tmp/checkpoints/checkpoint.face.keras'
 
-    model = FaceIdentifier((128, 128, 3), 0.25)
+    model = FaceIdentifier(
+        input_shape=(*hyperparameters.dim, 3),
+        dropout_rate=hyperparameters.dropout_rate,
+        learning_rate=hyperparameters.learning_rate,
+        model=hyperparameters.model,
+    )
     model.summary()
     # if os.path.exists(checkpoint_filepath):
     # model.load_weights(checkpoint_filepath)
 
-    model_callbacks = []
+    def scheduler(epoch, lr):
+        return float(lr * hyperparameters.learning_rate_factor)
 
-    model_callbacks.append(callbacks.ModelCheckpoint(
+    model_callbacks = [callbacks.ModelCheckpoint(
         filepath=checkpoint_filepath,
         monitor='val_loss',
         mode='min',
         save_best_only=True
-    ))
-
-    model_callbacks.append(callbacks.EarlyStopping(
+    ), callbacks.EarlyStopping(
         monitor='val_loss',
-        min_delta=0.0001,
+        min_delta=0.001,
         patience=5,
         restore_best_weights=True,
         mode="min"
-    ))
-
-
-    def scheduler(epoch, lr):
-        return float(lr * ops.exp(-0.1))
-
-    model_callbacks.append(callbacks.LearningRateScheduler(scheduler))
+    ), callbacks.LearningRateScheduler(scheduler)]
 
     try:
-        wandb.init(config={'bs': 12})
+        wandb.init(
+            project="DREAM_Face",
+            config={
+                "epochs": hyperparameters.epochs,
+                "batch_size": hyperparameters.batch_size,
+                "start_learning_rate": hyperparameters.learning_rate,
+                "learning_rate_factor": hyperparameters.learning_rate_factor,
+                "dropout": hyperparameters.dropout_rate,
+                "base_model": hyperparameters.model,
+
+            })
         model_callbacks.append(WandbMetricsLogger())
     except Exception as e:
         print("No wandb callback added.")
 
     history = model.fit(x=training_generator,
                         validation_data=val_generator,
-                        epochs=500,
+                        epochs=hyperparameters.epochs,
                         callbacks=model_callbacks)
-    print(history)
+    PlotHistory(history)
 
     result = model.evaluate(x=test_generator)
 
-    print(result)
 
-    model.save("saved_models/Face.keras")
+    model.save(model_save_path / "Face.keras")
 
-    # Final evaluation on test set
-    results = model.evaluate(x=test_generator,
-                             return_dict=True)
-    print(results)
+    model = saving.load_model(model_save_path / "Face.keras")
+    infer_images(x[np.random.choice(images.shape[0], 8, replace=False)], model)
 
-    model = saving.load_model("saved_models/Face.keras")
-    infer_images(images[np.random.choice(images.shape[0], 8, replace=False)], model)
-
-    with open('saved_models/training_history_dropout_face.csv', mode='w', newline='') as file:
+    with open(model_save_path / 'training_history_dropout_face.csv', mode='w', newline='') as file:
         writer = csv.writer(file)
         # Write header
         writer.writerow(history.history.keys())
         # Write data
         writer.writerows(zip(*history.history.values()))
 
-    PlotHistory(history)
+
+if __name__ == '__main__':
+    hyperparameters = SimpleNamespace(
+        epochs=20,
+        batch_size=32,
+        dim=(128, 128),
+        learning_rate=3e-4,
+        dropout_rate=0.25,
+        learning_rate_factor=0.9,
+        model='efficientnet-b0',  # [efficientnet-b0/b4, resnet50/101, inception, mobilenet
+    )
+
+    # Save information
+    model_save_path = Path("saved_models")
+    model_save_path.mkdir(parents=True, exist_ok=True)
+
+    # Define directories
+    face_directory = ['data/utk-face', 'data/utk-face/UTKFace']
+    non_face_directory = ['data/nonface']
+
+    # Load images and labels from both face and non-face directories
+    images, labels = load_data(face_directory, non_face_directory, deserialize_data=True,
+                               serialize_data=True, dim=hyperparameters.dim)
+    images, labels = shuffle_arrays(images, labels)
+
+    train_and_evaluate_hyperparameters(hyperparameters, images, labels, model_save_path)

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import csv
 
 
-def load_image_as_array(directory, filename):
+def load_image_as_array(directory, filename, dim):
     """
     Loads an image from a specified directory and converts it to a NumPy array.
 
@@ -17,13 +17,13 @@ def load_image_as_array(directory, filename):
     - filename: str, name of the image file.
 
     Returns:
-    - image_array: NumPy array representing the image (RGB, 128x128).
+    - image_array: NumPy array representing the image (RGB, *dim).
     """
     image = utils.load_img(
         path=os.path.join(directory, filename),
         color_mode="rgb",  # Load the image in RGB mode
-        target_size=(128, 128),  # Resize the image to 128x128
-        interpolation="bilinear",  # Bilinear interpolation for resizing
+        target_size=dim,  # Resize the image to dim
+        interpolation="lanczos",  # Bilinear interpolation for resizing
         keep_aspect_ratio=False  # Do not maintain the aspect ratio
     )
 
@@ -54,7 +54,7 @@ def get_subdirectories(directory):
     return subdirectories
 
 
-def load_non_face_data(directory, images, labels, deserialize_data, serialize_data):
+def load_non_face_data(directory, images, labels, deserialize_data, serialize_data, dim):
     """
     Recursively loads non-face images from a directory structure, adding them to the provided lists.
 
@@ -70,14 +70,14 @@ def load_non_face_data(directory, images, labels, deserialize_data, serialize_da
     # If subdirectories exist, recurse into them
     if len(subdirectories) != 0:
         for subdirectory in subdirectories:
-            load_non_face_data(os.path.join(directory, subdirectory), images, labels, deserialize_data, serialize_data)
+            load_non_face_data(os.path.join(directory, subdirectory), images, labels, deserialize_data, serialize_data, dim=dim)
         return
 
     # If no subdirectories, load images from the current directory
-    load_non_face_dir(directory, images, labels, deserialize_data, serialize_data)
+    load_non_face_dir(directory, images, labels, deserialize_data, serialize_data, dim=dim)
 
 
-def load_non_face_dir(directory, images, labels, deserialize_data, serialize_data):
+def load_non_face_dir(directory, images, labels, deserialize_data, serialize_data, dim):
     """
     Loads non-face images from a directory and assigns a label to each image.
 
@@ -102,7 +102,7 @@ def load_non_face_dir(directory, images, labels, deserialize_data, serialize_dat
             if not filename.endswith('.jpg'):
                 continue
 
-            image = load_image_as_array(directory, filename)
+            image = load_image_as_array(directory, filename, dim=dim)
             images_temp.append(image)
             labels_temp.append([0, 200, 2])  # Label '0' for non-face images, no specific age/gender
 
@@ -114,7 +114,7 @@ def load_non_face_dir(directory, images, labels, deserialize_data, serialize_dat
     append_list(labels, labels_temp)
 
 
-def load_face_data(directory, images, labels, deserialize_data, serialize_data):
+def load_face_data(directory, images, labels, deserialize_data, serialize_data, dim):
     """
     Loads face images from a directory, extracting labels from filenames.
 
@@ -154,7 +154,7 @@ def load_face_data(directory, images, labels, deserialize_data, serialize_data):
                 print(f"Gender {parts[1]} is not a valid number. File '{filename}'")
                 continue
 
-            image = load_image_as_array(directory, filename)
+            image = load_image_as_array(directory, filename, dim=dim)
             images_temp.append(image)
             labels_temp.append([1, age, gender])  # Label '1' for face images
 
@@ -222,7 +222,7 @@ def deserialize_saved_data(name):
     return images, labels
 
 
-def load_data(face_directories, non_face_directories, preprocess_fnc, deserialize_data=True, serialize_data=True):
+def load_data(face_directories, non_face_directories, deserialize_data=True, serialize_data=True, dim=(128,128)):
     """
     Loads both face and non-face images from specified directories, with optional preprocessing.
 
@@ -246,7 +246,7 @@ def load_data(face_directories, non_face_directories, preprocess_fnc, deserializ
         if not os.path.isdir(face_directory):
             print(f'{face_directory} does not exist checking next directory.')
             continue
-        load_face_data(face_directory, images, labels, deserialize_data, serialize_data)
+        load_face_data(face_directory, images, labels, deserialize_data, serialize_data, dim=dim)
 
     # Load non-face images
     print("Loading non-faces")
@@ -255,12 +255,10 @@ def load_data(face_directories, non_face_directories, preprocess_fnc, deserializ
             print(f'{non_face_directory} does not exist checking next directory.')
             continue
 
-        load_non_face_data(non_face_directory, images, labels, deserialize_data, serialize_data)
+        load_non_face_data(non_face_directory, images, labels, deserialize_data, serialize_data, dim=dim)
 
     # Convert lists to NumPy arrays
     images, labels = np.array(images), np.array(labels)
-    if preprocess_fnc is not None:
-        images = preprocess_fnc(images)
 
     return images, labels
 
