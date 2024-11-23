@@ -25,11 +25,11 @@ Key Features:
 def age_loss_fn(y_true, y_pred):
     """
     Custom loss function for age prediction. It computes Mean Squared Error only for valid age values (age < 200).
-    
+
     Args:
     - y_true: Ground truth labels (age values).
     - y_pred: Predicted age values.
-    
+
     Returns:
     - loss: Mean squared error between true and predicted ages for valid entries.
     """
@@ -37,31 +37,36 @@ def age_loss_fn(y_true, y_pred):
     y_true = y_true * ops.cast(ops.less(y_true, 200), y_true.dtype)
     return losses.mean_squared_error(y_true, y_pred)
 
+
 @keras.saving.register_keras_serializable()
 def age_metric(y_true, y_pred):
     """
     Custom metric function for age prediction. It computes Mean Absolute Error only for valid age values (age < 200).
-    
+
     Args:
     - y_true: Ground truth labels (age values).
     - y_pred: Predicted age values.
-    
+
     Returns:
     - metric: Mean absolute error between true and predicted ages for valid entries.
     """
-    y_pred = y_pred * ops.cast(ops.less(y_true, 200), y_pred.dtype)
-    y_true = y_true * ops.cast(ops.less(y_true, 200), y_true.dtype)
+    mask = ops.less(y_true, 200)
+    mask_pred = ops.expand_dims(mask, axis=-1)
+
+    y_pred = ops.where(mask_pred, y_pred, ops.zeros_like(y_pred))
+    y_true = ops.where(mask, y_true, ops.zeros_like(y_true))
     return metrics.mean_absolute_error(y_true, y_pred)
+
 
 @keras.saving.register_keras_serializable()
 def gender_loss_fn(y_true, y_pred):
     """
     Custom loss function for gender prediction. It computes Binary Cross-Entropy only for valid gender labels.
-    
+
     Args:
     - y_true: Ground truth labels (gender values).
     - y_pred: Predicted gender probabilities.
-    
+
     Returns:
     - loss: Binary cross-entropy between true and predicted gender labels.
     """
@@ -69,20 +74,25 @@ def gender_loss_fn(y_true, y_pred):
     y_true = y_true * ops.cast(ops.less(y_true, 2), y_true.dtype)
     return losses.binary_crossentropy(y_true, y_pred)
 
+
 @keras.saving.register_keras_serializable()
 def gender_metric(y_true, y_pred):
     """
     Custom metric function for gender prediction. It computes Binary Accuracy only for valid gender labels.
-    
+
     Args:
     - y_true: Ground truth labels (gender values).
     - y_pred: Predicted gender probabilities.
-    
+
     Returns:
     - metric: Binary accuracy between true and predicted gender labels.
     """
-    y_pred = y_pred * ops.cast(ops.less(y_true, 2), y_pred.dtype)
-    y_true = y_true * ops.cast(ops.less(y_true, 2), y_true.dtype)
+
+    mask = ops.less(y_true, 2)
+    mask_pred = ops.expand_dims(mask, axis=-1)
+
+    y_pred = ops.where(mask_pred, y_pred, ops.zeros_like(y_pred))
+    y_true = ops.where(mask, y_true, ops.zeros_like(y_true))
     return metrics.binary_accuracy(y_true, y_pred)
 
 def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
@@ -123,7 +133,7 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
     gender_output = layers.Dense(256, activation='relu', name='gender_1')(x)
     gender_output = layers.Dense(128, activation='relu', name='gender_2')(gender_output)
     gender_output = layers.Dropout(rate=dropout_rate, name='gender_dropout')(gender_output)
-    gender_output = layers.Dense(3, activation='softmax', name='gender_output')(gender_output)
+    gender_output = layers.Dense(1, activation='sigmoid', name='gender_output')(gender_output)
 
     # Combine all branches into a final model
     model = models.Model(inputs=inputs, outputs={'face_output': face_output,
@@ -137,12 +147,12 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
         loss={
             'face_output': losses.BinaryCrossentropy(),
             'age_output': age_loss_fn,
-            'gender_output': losses.SparseCategoricalCrossentropy(),
+            'gender_output': gender_loss_fn,
         },
         metrics={
             'face_output': metrics.BinaryAccuracy(),
             'age_output': age_metric,
-            'gender_output': metrics.SparseCategoricalAccuracy(),
+            'gender_output': gender_metric,
         })
 
     # Plot the model architecture for visualization
@@ -153,27 +163,30 @@ def FaceIdentifier(input_shape=(128, 128, 3), dropout_rate=0.25):
 def infer_images(images, model, show=True):
     """
     Performs inference on a list of images using the given model.
-    
+
     Args:
     - images: List of images for inference.
     - model: Pre-trained Keras model for inference.
     - show: Whether to display the image during inference (default: True).
-    
+
     Returns:
     - None
     """
+    results = []
     for image in images:
-        return infer_image(image, model, show)
+         results.append(infer_image(image, model, show))
+    return results
+
 
 def infer_image(image, model, show=True):
     """
     Performs inference on a single image using the given model and prints the result.
-    
+
     Args:
     - image: Single image for inference.
     - model: Pre-trained Keras model for inference.
     - show: Whether to display the image during inference (default: True).
-    
+
     Returns:
     - label: The result label with face, age, and gender prediction.
     """
@@ -182,15 +195,15 @@ def infer_image(image, model, show=True):
         plt.show()
 
     predictions = model.predict(ops.expand_dims(image, 0))
-    score_face = float(predictions['face_output'][0])
+    score_face = float(predictions['face_output'][0][0])
     score_age = round(predictions['age_output'][0][0])
-    score_gender = float(ops.argmax(predictions['gender_output'][0]))
+    score_gender = float(predictions['gender_output'][0][0])
 
     label = f"This image contains a face with {100 * score_face:.2f}% certainty."
     print(label)
 
     if score_face > 0.5:
-        additional_label = f"The person has gender {'male' if score_gender == 0 else 'female'} and is {score_age} years old."
+        additional_label = f"The person has gender {'male' if score_gender <= 0.5 else 'female'} and is {score_age} years old."
         print(additional_label)
         label += '\n' + additional_label
 
