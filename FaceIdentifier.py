@@ -14,6 +14,8 @@ import keras
 from wandb.integration.keras import WandbMetricsLogger
 import random
 
+import tensorflow as tf
+
 """
 Multi-Task Deep Learning Model for Face Analysis
 
@@ -204,23 +206,18 @@ def FaceIdentifier(
     x = layers.GlobalAveragePooling2D()(x)
     x = layers.BatchNormalization()(x)
 
-    # Face detection branch
+    # Define face output branch (binary classification)
     face_output = layers.Dropout(rate=dropout_rate, name='face_dropout')(x)
     face_output = layers.Dense(1, activation='sigmoid', name='face_output')(face_output)
 
-    # Age estimation branch
-    age_output = layers.Dense(2024, activation='relu', name='age_1')(x)
-    age_output = layers.BatchNormalization()(age_output)
-    age_output = layers.Dense(1024, activation='relu', name='age_2')(age_output)
-    age_output = layers.BatchNormalization()(age_output)
+    # Define age output branch (regression)
+    age_output = layers.Dense(256, activation='relu', name='age_1')(x)
     age_output = layers.Dropout(rate=dropout_rate, name='age_dropout')(age_output)
     age_output = layers.Dense(1, activation='relu', name='age_output')(age_output)
 
-    # Gender classification branch
-    gender_output = layers.Dense(2024, activation='relu', name='gender_1')(x)
-    gender_output = layers.BatchNormalization()(gender_output)
-    gender_output = layers.Dense(1024, activation='relu', name='gender_2')(gender_output)
-    gender_output = layers.BatchNormalization()(gender_output)
+    # Define gender output branch (multi-class classification)
+    gender_output = layers.Dense(256, activation='relu', name='gender_1')(x)
+    gender_output = layers.Dense(128, activation='relu', name='gender_2')(gender_output)
     gender_output = layers.Dropout(rate=dropout_rate, name='gender_dropout')(gender_output)
     gender_output = layers.Dense(1, activation='sigmoid', name='gender_output')(gender_output)
 
@@ -235,7 +232,7 @@ def FaceIdentifier(
     )
 
     model.compile(
-        run_eagerly=False,
+        run_eagerly=True,
         optimizer=optimizers.Adam(learning_rate=learning_rate),
         loss={
             'face_output': losses.BinaryCrossentropy(),
@@ -483,7 +480,7 @@ if __name__ == '__main__':
     model_save_path.mkdir(parents=True, exist_ok=True)
 
     # Define data directories
-    face_directory = ['data/utk-face', 'data/utk-face/UTKFace']
+    face_directory = ['data/utk-face/UTKFace']
     non_face_directory = ['data/nonface']
 
     # Load and preprocess data

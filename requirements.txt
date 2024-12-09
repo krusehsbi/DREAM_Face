@@ -13,5 +13,6 @@ tqdm~=4.66.6
 pydot
 graphviz
 wandb~=0.18.7
+kagglehub
 
 tensorflow~=2.16.1
